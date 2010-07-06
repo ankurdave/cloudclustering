@@ -17,4 +17,10 @@
     <p>
         <asp:Button ID="Run" runat="server" Text="Run K-Means" onclick="Run_Click" />
     </p>
+    <p>
+        <asp:Label ID="Status" runat="server" Text="Click Run K-Means to see results."></asp:Label>
+        <asp:Timer ID="UpdateTimer" runat="server" Enabled="False" Interval="2000" 
+            ontick="UpdateTimer_Tick">
+        </asp:Timer>
+    </p>
 </asp:Content>

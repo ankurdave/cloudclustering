@@ -5,9 +5,14 @@ using System.Text;
 
 namespace AzureUtils
 {
-    static class AzureHelper
+    public static class AzureHelper
     {
         public static void EnqueueMessage(string queueName, IAzureMessage message)
+        {
+            throw new NotImplementedException();
+        }
+
+        public static void PollForMessage(string queueName, Func<IAzureMessage, bool> condition, Func<IAzureMessage, bool> action)
         {
             throw new NotImplementedException();
         }

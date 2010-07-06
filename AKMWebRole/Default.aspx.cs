@@ -10,6 +10,8 @@ namespace AKMWebRole
 {
     public partial class _Default : System.Web.UI.Page
     {
+        private Guid jobID;
+
         protected void Page_Load(object sender, EventArgs e)
         {
 
@@ -17,12 +19,48 @@ namespace AKMWebRole
 
         protected void Run_Click(object sender, EventArgs e)
         {
+            FreezeUI();
+            Status.Text = "Running...";
+
             AzureHelper.EnqueueMessage("serverRequests", new ServerRequest {
-                JobID = new Guid(),
+                JobID = jobID = new Guid(),
                 N = int.Parse(N.Text),
                 K = int.Parse(K.Text),
                 M = int.Parse(M.Text)
             });
+
+            WaitForResults();
+        }
+
+        private void FreezeUnfreezeUI(bool freeze = true)
+        {
+            Run.Enabled = N.Enabled = K.Enabled = M.Enabled = !freeze;
+        }
+
+        private void FreezeUI() {
+            FreezeUnfreezeUI(true);
+        }
+
+        private void UnfreezeUI()
+        {
+            FreezeUnfreezeUI(false);
+        }
+        
+        private void WaitForResults()
+        {
+            UpdateTimer.Enabled = true;
+        }
+
+        protected void UpdateTimer_Tick(object sender, EventArgs e)
+        {
+            AzureHelper.PollForMessage("serverResponses",
+                message => ((ServerResponse)message).JobID == jobID,
+                message =>
+                {
+                    Status.Text = "Done! " + message.ToString();
+                    UnfreezeUI();
+                    return true;
+                });
         }
     }
 }
