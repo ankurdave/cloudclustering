@@ -1,0 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using AzureHelper;
+
+namespace AKMWebRole
+{
+    public partial class _Default : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void Run_Click(object sender, EventArgs e)
+        {
+            AzureHelper.EnqueueMessage("serverRequests", new ServerRequest {
+                JobID = new Guid(),
+                N = int.Parse(N.Text),
+                K = int.Parse(K.Text),
+                M = int.Parse(M.Text)
+            });
+        }
+    }
+}

@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "AzureKMeans", "AzureKMeans\AzureKMeans.ccproj", "{9ACE48DF-F9EE-4393-8BFC-5DE73BBBD6D2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AKMWebRole", "AKMWebRole\AKMWebRole.csproj", "{25F887C0-22F0-49AD-83EF-9E4D9EF2BB32}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AKMWorkerRole", "AKMWorkerRole\AKMWorkerRole.csproj", "{3FE62F13-E112-4899-A699-F14BD385E22E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AKMServerRole", "AKMServerRole\AKMServerRole.csproj", "{5222EF91-87E1-41C6-9187-EC784D48262A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureHelper", "AzureHelper\AzureHelper.csproj", "{8E0F22FA-DAE6-4485-901C-57DE15290BF1}"
+EndProject
+Global
+	GlobalSection(MercurialSourceControlSolutionProperties) = preSolution
+		SolutionIsControlled = True
+		SolutionBindings = <Solution Location In Database>
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9ACE48DF-F9EE-4393-8BFC-5DE73BBBD6D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9ACE48DF-F9EE-4393-8BFC-5DE73BBBD6D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9ACE48DF-F9EE-4393-8BFC-5DE73BBBD6D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9ACE48DF-F9EE-4393-8BFC-5DE73BBBD6D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25F887C0-22F0-49AD-83EF-9E4D9EF2BB32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25F887C0-22F0-49AD-83EF-9E4D9EF2BB32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25F887C0-22F0-49AD-83EF-9E4D9EF2BB32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25F887C0-22F0-49AD-83EF-9E4D9EF2BB32}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FE62F13-E112-4899-A699-F14BD385E22E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FE62F13-E112-4899-A699-F14BD385E22E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FE62F13-E112-4899-A699-F14BD385E22E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FE62F13-E112-4899-A699-F14BD385E22E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5222EF91-87E1-41C6-9187-EC784D48262A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5222EF91-87E1-41C6-9187-EC784D48262A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5222EF91-87E1-41C6-9187-EC784D48262A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5222EF91-87E1-41C6-9187-EC784D48262A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E0F22FA-DAE6-4485-901C-57DE15290BF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E0F22FA-DAE6-4485-901C-57DE15290BF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E0F22FA-DAE6-4485-901C-57DE15290BF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E0F22FA-DAE6-4485-901C-57DE15290BF1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
