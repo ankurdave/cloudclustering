@@ -9,6 +9,11 @@ namespace AzureUtils
     {
         public Guid JobID { get; set; }
 
+        public ServerResponse()
+        {
+
+        }
+
         public ServerResponse(string messageString)
         {
             throw new NotImplementedException();

@@ -46,17 +46,28 @@ namespace AKMWebRole
             FreezeUnfreezeUI(false);
         }
         
+        private void WaitStopWaitingForResults(bool wait = true)
+        {
+            UpdateTimer.Enabled = wait;
+        }
         private void WaitForResults()
         {
-            UpdateTimer.Enabled = true;
+            WaitStopWaitingForResults(true);
+        }
+        private void StopWaitingForResults()
+        {
+            WaitStopWaitingForResults(false);
         }
 
         protected void UpdateTimer_Tick(object sender, EventArgs e)
         {
+            Status.Text += ".";
+
             AzureHelper.PollForMessage("serverResponses",
                 message => ((ServerResponse)message).JobID == jobID,
                 message =>
                 {
+                    StopWaitingForResults();
                     Status.Text = "Done! " + message.ToString();
                     UnfreezeUI();
                     return true;
