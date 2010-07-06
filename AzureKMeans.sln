@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AKMWorkerRole", "AKMWorkerR
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AKMServerRole", "AKMServerRole\AKMServerRole.csproj", "{5222EF91-87E1-41C6-9187-EC784D48262A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureHelper", "AzureHelper\AzureHelper.csproj", "{8E0F22FA-DAE6-4485-901C-57DE15290BF1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureUtils", "AzureHelper\AzureUtils.csproj", "{8E0F22FA-DAE6-4485-901C-57DE15290BF1}"
 EndProject
 Global
 	GlobalSection(MercurialSourceControlSolutionProperties) = preSolution

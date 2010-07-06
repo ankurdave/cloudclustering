@@ -141,9 +141,9 @@
     <Content Include="Site.Master" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AzureHelper\AzureHelper.csproj">
+    <ProjectReference Include="..\AzureHelper\AzureUtils.csproj">
       <Project>{8E0F22FA-DAE6-4485-901C-57DE15290BF1}</Project>
-      <Name>AzureHelper</Name>
+      <Name>AzureUtils</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

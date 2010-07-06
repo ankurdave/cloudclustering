@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace AzureHelper
+namespace AzureUtils
 {
     public class ServerRequest : IAzureMessage
     {
