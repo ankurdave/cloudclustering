@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace AzureUtils
 {
-    public class KMeansJob : KMeansJobData
+    public class KMeansJob
     {
         public CloudBlob Points { get; set; }
         public CloudBlob Centroids { get; set; }
@@ -14,8 +14,11 @@ namespace AzureUtils
         
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
         private HashSet<Guid> taskIDs = new HashSet<Guid>();
+        private KMeansJobData jobData;
 
-        public KMeansJob(KMeansJobData job) : base(job) { }
+        public KMeansJob(KMeansJobData jobData) {
+            this.jobData = jobData;
+        }
 
         public void AddTaskID(Guid taskID)
         {
@@ -54,11 +57,11 @@ namespace AzureUtils
         /// </summary>
         public void EnqueueTasks()
         {
-            for (int i = 0; i < M; i++)
+            for (int i = 0; i < jobData.M; i++)
             {
-                KMeansTask task = new KMeansTask(this);
+                KMeansTask task = new KMeansTask(jobData);
                 task.TaskID = Guid.NewGuid();
-                task.Points = CopyPointPartition(i, M);
+                task.Points = CopyPointPartition(i, jobData.M);
                 task.Centroids = Centroids;
 
                 AddTaskID(task.TaskID);
