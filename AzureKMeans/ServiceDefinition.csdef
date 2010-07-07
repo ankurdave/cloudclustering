@@ -6,16 +6,19 @@
     </InputEndpoints>
     <ConfigurationSettings>
       <Setting name="DiagnosticsConnectionString" />
+      <Setting name="DataConnectionString" />
     </ConfigurationSettings>
   </WebRole>
   <WorkerRole name="AKMWorkerRole">
     <ConfigurationSettings>
       <Setting name="DiagnosticsConnectionString" />
+      <Setting name="DataConnectionString" />
     </ConfigurationSettings>
   </WorkerRole>
   <WorkerRole name="AKMServerRole">
     <ConfigurationSettings>
       <Setting name="DiagnosticsConnectionString" />
+      <Setting name="DataConnectionString" />
     </ConfigurationSettings>
   </WorkerRole>
 </ServiceDefinition>

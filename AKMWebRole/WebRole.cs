@@ -4,6 +4,9 @@ using System.Linq;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Diagnostics;
 using Microsoft.WindowsAzure.ServiceRuntime;
+using AzureUtils;
+
+using System.Diagnostics;
 
 namespace AKMWebRole
 {

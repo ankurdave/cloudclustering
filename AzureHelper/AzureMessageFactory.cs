@@ -7,8 +7,19 @@ namespace AzureUtils
 {
     static class AzureMessageFactory
     {
-        private static Dictionary<string, Func<string, IAzureMessage>> queueMessageGenerator = new Dictionary<string, Func<string, IAzureMessage>> {
-            { "serverResponses", messageString => new ServerResponse(messageString) }
-        };
+        public static AzureMessage CreateMessage(string queueName, Microsoft.WindowsAzure.StorageClient.CloudQueueMessage queueMessage)
+        {
+            // Switch on the queue name to figure out what subclass of AzureMessage to instantiate
+            // (Ugly, but I don't know any other way apart from reflection, which seems like overkill)
+            switch (queueName)
+            {
+                case "serverrequests":
+                    return AzureMessage.FromMessage<ServerRequest>(queueMessage);
+                case "serverresponses":
+                    return AzureMessage.FromMessage<ServerResponse>(queueMessage);
+                default:
+                    return null;
+            }
+        }
     }
 }

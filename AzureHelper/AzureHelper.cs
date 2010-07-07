@@ -2,28 +2,51 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.ServiceRuntime;
 
 namespace AzureUtils
 {
     public static class AzureHelper
     {
-        public static void EnqueueMessage(string queueName, IAzureMessage message)
-        {
-            //throw new NotImplementedException();
-            System.Diagnostics.Debug.WriteLine("Enqueueing message " + message + " to queue " + queueName);
+        private static CloudStorageAccount _storageAccount;
+        public static CloudStorageAccount StorageAccount {
+            get {
+                if (_storageAccount == null)
+                {
+                    CloudStorageAccount.SetConfigurationSettingPublisher((configName, configSetter) =>
+                        configSetter(RoleEnvironment.GetConfigurationSettingValue(configName)));
+                    _storageAccount = CloudStorageAccount.FromConfigurationSetting("DataConnectionString");
+                }
+
+                return _storageAccount;
+            }
         }
 
-        public static void PollForMessage(string queueName, Func<IAzureMessage, bool> condition, Func<IAzureMessage, bool> action)
+        public static void EnqueueMessage(string queueName, AzureMessage message)
         {
-            //throw new NotImplementedException();
-            System.Diagnostics.Debug.WriteLine("Polling for message on queue " + queueName);
+            CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
+            queue.CreateIfNotExist();
 
-            IAzureMessage message = new ServerResponse { JobID = new Guid() };
+            queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
+        }
 
-            System.Diagnostics.Debug.WriteLine("Message satisfies condition? " + (condition.Invoke(message) ? "yes" : "no"));
+        public static void PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)
+        {
+            CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
+            queue.CreateIfNotExist();
 
-            System.Diagnostics.Debug.WriteLine("Running action...");
-            action.Invoke(message);
+            CloudQueueMessage queueMessage = queue.GetMessage();
+            AzureMessage message = AzureMessageFactory.CreateMessage(queueName, queueMessage);
+
+            if (!condition.Invoke(message))
+                return;
+
+            if (!action.Invoke(message))
+                return;
+
+            queue.DeleteMessage(queueMessage);
         }
     }
 }

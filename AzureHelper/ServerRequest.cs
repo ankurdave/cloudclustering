@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace AzureUtils
 {
-    public class ServerRequest : IAzureMessage
+    [Serializable]
+    public class ServerRequest : AzureMessage
     {
         public Guid JobID { get; set; }
         public int N { get; set; }

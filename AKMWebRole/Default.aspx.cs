@@ -22,7 +22,7 @@ namespace AKMWebRole
             FreezeUI();
             Status.Text = "Running...";
 
-            AzureHelper.EnqueueMessage("serverRequests", new ServerRequest {
+            AzureHelper.EnqueueMessage("serverrequests", new ServerRequest {
                 JobID = jobID = new Guid(),
                 N = int.Parse(N.Text),
                 K = int.Parse(K.Text),
@@ -63,7 +63,7 @@ namespace AKMWebRole
         {
             Status.Text += ".";
 
-            AzureHelper.PollForMessage("serverResponses",
+            AzureHelper.PollForMessage("serverresponses",
                 message => ((ServerResponse)message).JobID == jobID,
                 message =>
                 {
