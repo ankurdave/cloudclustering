@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.ServiceRuntime;
+using System.Threading;
 
 namespace AzureUtils
 {
@@ -32,21 +33,38 @@ namespace AzureUtils
             queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
         }
 
-        public static void PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)
+        public static bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
             queue.CreateIfNotExist();
 
             CloudQueueMessage queueMessage = queue.GetMessage();
-            AzureMessage message = AzureMessageFactory.CreateMessage(queueName, queueMessage);
+            AzureMessage message = AzureMessageFactory.CreateMessage(queueName, queueMessage);  
 
             if (!condition.Invoke(message))
-                return;
+                return false;
 
             if (!action.Invoke(message))
-                return;
+                return false;
 
             queue.DeleteMessage(queueMessage);
+
+            return true;
+        }
+
+        public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 1000, int iterationLimit = 0)
+        {
+            for (int i = 0; iterationLimit == 0 || i < iterationLimit; i++)
+            {
+                if (PollForMessage(queueName, condition, action))
+                {
+                    break;
+                }
+                else
+                {
+                    Thread.Sleep(delayMilliseconds);
+                }
+            }
         }
     }
 }
