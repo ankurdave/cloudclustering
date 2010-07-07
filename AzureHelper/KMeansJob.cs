@@ -8,10 +8,9 @@ namespace AzureUtils
 {
     public class KMeansJob
     {
-        public CloudBlob Points { get; set; }
-        public CloudBlob Centroids { get; set; }
-        public int TotalNumPointsChanged { get; set; }
-        
+        private CloudBlob Points { get; set; }
+        private CloudBlob Centroids { get; set; }
+        private int TotalNumPointsChanged { get; set; }
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
         private HashSet<Guid> taskIDs = new HashSet<Guid>();
         private KMeansJobData jobData;
@@ -20,36 +19,9 @@ namespace AzureUtils
             this.jobData = jobData;
         }
 
-        public void AddTaskID(Guid taskID)
-        {
-            taskIDs.Add(taskID);
-        }
-
-        public bool ContainsTaskID(Guid taskID)
-        {
-            return taskIDs.Contains(taskID);
-        }
-
-        public void RemoveTaskID(Guid taskID)
-        {
-            taskIDs.Remove(taskID);
-        }
-
         public void InitializeStorage()
         {
             throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// Checks whether to move into the next iteration, and performs the appropriate actions to make it happen.
-        /// </summary>
-        public void NextIteration()
-        {
-            if (NumPointsChangedAboveThreshold())
-            {
-                RecalculateCentroids();
-                EnqueueTasks();
-            }
         }
 
         /// <summary>
@@ -64,9 +36,50 @@ namespace AzureUtils
                 task.Points = CopyPointPartition(i, jobData.M);
                 task.Centroids = Centroids;
 
-                AddTaskID(task.TaskID);
+                taskIDs.Add(task.TaskID);
 
                 AzureHelper.EnqueueMessage("workerrequest", task);
+            }
+        }
+
+        /// <summary>
+        /// Handles a worker's taskResult from a running k-means job. Adds up the partial sums from the taskResult.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns>False if the given task result has already been counted, true otherwise.</returns>
+        public bool ProcessWorkerResponse(KMeansTaskResult taskResult)
+        {
+            // Make sure we're actually still waiting for a result for this task
+            // If not, this might be a duplicate queue message
+            if (!taskIDs.Contains(taskResult.TaskID))
+                return false;
+            taskIDs.Remove(taskResult.TaskID);
+
+            // Add up the partial sums
+            AddDataFromTaskResult(taskResult);
+
+            // If this is the last worker to return, this iteration is done and we should start the next one
+            if (NoTaskIDsLeft())
+            {
+                NextIteration();
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Checks whether to move into the next iteration, and performs the appropriate actions to make it happen.
+        /// </summary>
+        private void NextIteration()
+        {
+            if (NumPointsChangedAboveThreshold())
+            {
+                RecalculateCentroids();
+                EnqueueTasks();
+            }
+            else
+            {
+                ReturnResults();
             }
         }
 
@@ -75,7 +88,7 @@ namespace AzureUtils
         /// </summary>
         /// <param name="partitionNumber">Partition number to copy. Must be in the range [0,totalPartitions)</param>
         /// <param name="totalPartitions">Total number of partitions to split Points into. Must be 1 or more.</param>
-        public CloudBlob CopyPointPartition(int partitionNumber, int totalPartitions)
+        private CloudBlob CopyPointPartition(int partitionNumber, int totalPartitions)
         {
             throw new NotImplementedException();
         }
@@ -84,7 +97,7 @@ namespace AzureUtils
         /// Sums the given taskResult's points processed data with the totals.
         /// </summary>
         /// <param name="taskResult"></param>
-        public void AddDataFromTaskResult(KMeansTaskResult taskResult)
+        private void AddDataFromTaskResult(KMeansTaskResult taskResult)
         {
             TotalNumPointsChanged += taskResult.NumPointsChanged;
             foreach (KeyValuePair<Centroid, PointsProcessedData> pointsProcessedDataForCentroid in taskResult.PointsProcessedDataByCentroid)
@@ -103,17 +116,22 @@ namespace AzureUtils
             totalPointsProcessedDataByCentroid[centroid.ID] += data;
         }
 
-        public bool NoMoreTaskIDs()
+        private bool NoTaskIDsLeft()
         {
             throw new NotImplementedException();
         }
 
-        public bool NumPointsChangedAboveThreshold()
+        private bool NumPointsChangedAboveThreshold()
         {
             throw new NotImplementedException();
         }
 
-        public void RecalculateCentroids()
+        private void RecalculateCentroids()
+        {
+            throw new NotImplementedException();
+        }
+
+        private void ReturnResults()
         {
             throw new NotImplementedException();
         }

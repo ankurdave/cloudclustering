@@ -28,9 +28,9 @@ namespace AKMServerRole
         }
 
         /// <summary>
-        /// Handles a new k-means job. Initializes the Azure storage and enqueues a number of tasks for workers to complete.
+        /// Handles a request for a new k-means job. Sets up a new job and starts it off.
         /// </summary>
-        /// <param name="message">The new job. Must be of type KMeansJobData.</param>
+        /// <param name="message">The job request. Must be of type KMeansJobData.</param>
         private bool ProcessNewJob(AzureMessage message)
         {
             KMeansJobData job = (KMeansJobData)message;
@@ -43,31 +43,14 @@ namespace AKMServerRole
         }
 
         /// <summary>
-        /// Handles an individual worker's taskResult from a running k-means job. Adds up the partial sums from the taskResult.
+        /// Handles a worker response as part of a running k-means job. Looks up the appropriate job and passes the worker's response to it.
         /// </summary>
-        /// <param name="message"></param>
-        /// <returns>False if the given task result has already been counted, true otherwise.</returns>
+        /// <param name="message">The worker response. Must be of type KMeansTaskResult.</param>
         private bool ProcessWorkerResponse(AzureMessage message)
         {
             KMeansTaskResult taskResult = (KMeansTaskResult)message;
-            KMeansJob jobWorkspace = jobs[taskResult.JobID];
 
-            // Make sure we're actually still waiting for a result for this task
-            // If not, this might be a duplicate queue message
-            if (!jobWorkspace.ContainsTaskID(taskResult.TaskID))
-                return false;
-            jobWorkspace.RemoveTaskID(taskResult.TaskID);
-
-            // Add up the partial sums
-            jobWorkspace.AddDataFromTaskResult(taskResult);
-
-            // If this is the last worker to return, this iteration is done
-            if (jobWorkspace.NoMoreTaskIDs())
-            {
-                jobWorkspace.NextIteration();
-            }
-
-            return true;
+            return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult);
         }
 
         public override bool OnStart()
