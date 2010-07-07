@@ -7,7 +7,7 @@ using System.Runtime.Serialization;
 namespace AzureUtils
 {
     [Serializable]
-    public class KMeansJobResult : KMeansJob
+    public class KMeansJobResult : KMeansJobData
     {
         
     }

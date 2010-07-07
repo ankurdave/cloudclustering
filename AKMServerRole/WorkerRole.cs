@@ -14,7 +14,7 @@ namespace AKMServerRole
 {
     public class WorkerRole : RoleEntryPoint
     {
-        private Dictionary<Guid, KMeansJobWorkspace> jobWorkspaces = new Dictionary<Guid, KMeansJobWorkspace>();
+        private Dictionary<Guid, KMeansJob> jobs = new Dictionary<Guid, KMeansJob>();
 
         public override void Run()
         {
@@ -30,14 +30,14 @@ namespace AKMServerRole
         /// <summary>
         /// Handles a new k-means job. Initializes the Azure storage and enqueues a number of tasks for workers to complete.
         /// </summary>
-        /// <param name="message">The new job. Must be of type KMeansJob.</param>
+        /// <param name="message">The new job. Must be of type KMeansJobData.</param>
         private bool ProcessNewJob(AzureMessage message)
         {
-            KMeansJob job = (KMeansJob)message;
+            KMeansJobData job = (KMeansJobData)message;
 
-            jobWorkspaces[job.JobID] = new KMeansJobWorkspace(job);
-            jobWorkspaces[job.JobID].InitializeStorage();
-            jobWorkspaces[job.JobID].EnqueueTasks();
+            jobs[job.JobID] = new KMeansJob(job);
+            jobs[job.JobID].InitializeStorage();
+            jobs[job.JobID].EnqueueTasks();
             
             return true;
         }
@@ -50,7 +50,7 @@ namespace AKMServerRole
         private bool ProcessWorkerResponse(AzureMessage message)
         {
             KMeansTaskResult taskResult = (KMeansTaskResult)message;
-            KMeansJobWorkspace jobWorkspace = jobWorkspaces[taskResult.JobID];
+            KMeansJob jobWorkspace = jobs[taskResult.JobID];
 
             // Make sure we're actually still waiting for a result for this task
             // If not, this might be a duplicate queue message

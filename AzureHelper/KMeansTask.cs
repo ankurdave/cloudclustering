@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace AzureUtils
 {
-    public class KMeansTask : KMeansJob
+    public class KMeansTask : KMeansJobData
     {
         public Guid TaskID { get; set; }
         public CloudBlob Points { get; set; }
@@ -14,6 +14,6 @@ namespace AzureUtils
 
         public KMeansTask() { }
 
-        public KMeansTask(KMeansJob job) : base(job) { }
+        public KMeansTask(KMeansJobData job) : base(job) { }
     }
 }

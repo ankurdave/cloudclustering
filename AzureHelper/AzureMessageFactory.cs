@@ -14,7 +14,7 @@ namespace AzureUtils
             switch (queueName)
             {
                 case "serverrequests":
-                    return AzureMessage.FromMessage<KMeansJob>(queueMessage);
+                    return AzureMessage.FromMessage<KMeansJobData>(queueMessage);
                 case "serverresponses":
                     return AzureMessage.FromMessage<KMeansJobResult>(queueMessage);
                 default:
