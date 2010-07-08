@@ -16,6 +16,12 @@ namespace AzureUtils
         public int NumPointsProcessed { get; set; }
         public Point PartialPointSum { get; set; }
 
+        public PointsProcessedData()
+        {
+            NumPointsProcessed = 0;
+            PartialPointSum = new Point();
+        }
+
         public static PointsProcessedData operator +(PointsProcessedData d1, PointsProcessedData d2)
         {
             return new PointsProcessedData

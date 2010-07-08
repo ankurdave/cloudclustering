@@ -2,26 +2,54 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.WindowsAzure.StorageClient;
+using System.IO;
+using System.Security.Cryptography;
 
 namespace AzureUtils
 {
     public class KMeansJob
     {
-        private CloudBlob Points { get; set; }
-        private CloudBlob Centroids { get; set; }
+        private const int PointRange = 50;
+        private const int NumPointsChangedThreshold = 0;
+        private ICloudBlob Points { get; set; }
+        private ICloudBlob Centroids { get; set; }
         private int TotalNumPointsChanged { get; set; }
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
         private HashSet<Guid> taskIDs = new HashSet<Guid>();
         private KMeansJobData jobData;
+        private IAzureHelper azureHelper;
 
-        public KMeansJob(KMeansJobData jobData) {
+        public KMeansJob(KMeansJobData jobData, IAzureHelper azureHelper) {
             this.jobData = jobData;
+            this.azureHelper = azureHelper;
         }
 
+        /// <summary>
+        /// Sets up the Azure storage (Points and Centroids) for the first k-means iteration.
+        /// </summary>
         public void InitializeStorage()
         {
-            throw new NotImplementedException();
+            // Set up the storage client and the container
+            azureHelper.CreateBlobContainer(jobData.JobID.ToString());
+            
+            // Set up the random point generator
+            Random random = new Random();
+            Func<int, byte[]> randomPoint = (i => new ClusterPoint(
+                    random.Next(-PointRange, PointRange),
+                    random.Next(-PointRange, PointRange),
+                    Guid.Empty).ToByteArray());
+
+            // Initialize the points blob with N random ClusterPoints
+            Points = container.GetBlockBlobReference("points");
+            BlockBlobGenerator pointsGen = new BlockBlobGenerator(Points, jobData.N);
+            pointsGen.DataGenerator = randomPoint;
+            pointsGen.Run();
+
+            // Initialize the centroids blob with K random Centroids
+            Centroids = container.GetBlockBlobReference("centroids");
+            BlockBlobGenerator centroidsGen = new BlockBlobGenerator(Centroids, jobData.K);
+            centroidsGen.DataGenerator = randomPoint;
+            centroidsGen.Run();
         }
 
         /// <summary>
@@ -29,11 +57,15 @@ namespace AzureUtils
         /// </summary>
         public void EnqueueTasks()
         {
+            CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
+            container.CreateIfNotExist();
+
             for (int i = 0; i < jobData.M; i++)
             {
                 KMeansTask task = new KMeansTask(jobData);
                 task.TaskID = Guid.NewGuid();
-                task.Points = CopyPointPartition(i, jobData.M);
+                task.Points = CopyPointPartition(Points, i, jobData.M, container, task.TaskID.ToString());
                 task.Centroids = Centroids;
 
                 taskIDs.Add(task.TaskID);
@@ -86,11 +118,31 @@ namespace AzureUtils
         /// <summary>
         /// Copies a partition of the Points blob into a new blob and returns that new blob.
         /// </summary>
+        /// <param name="points">The blob from which to read.</param>
         /// <param name="partitionNumber">Partition number to copy. Must be in the range [0,totalPartitions)</param>
         /// <param name="totalPartitions">Total number of partitions to split Points into. Must be 1 or more.</param>
-        private CloudBlob CopyPointPartition(int partitionNumber, int totalPartitions)
+        /// <param name="container">The container in which to place the new blob.</param>
+        /// <param name="blobName">What to name the new blob.</param>
+        private CloudBlob CopyPointPartition(CloudBlob points, int partitionNumber, int totalPartitions, CloudBlobContainer container, String blobName)
         {
-            throw new NotImplementedException();
+            // Calculate what portion of points to read
+            BlobStream pointsStream = points.OpenRead();
+            long numPoints = pointsStream.Length / ClusterPoint.Size;
+            long partitionLength = (long)Math.Ceiling((float)numPoints / totalPartitions);
+            long startByte = partitionNumber * partitionLength;
+
+            // Read it into partition
+            byte[] partition = new byte[partitionLength];
+            pointsStream.Position = startByte;
+            int actualLength = pointsStream.Read(partition, 0, (int)partitionLength);
+
+            // Create the new blob
+            CloudBlockBlob newBlob = container.GetBlockBlobReference(blobName);
+            BlobStream newBlobStream = newBlob.OpenWrite();
+            newBlobStream.BlockSize = AzureHelper.BlobBlockSize;
+            newBlobStream.Write(partition, 0, actualLength);
+
+            return newBlob;
         }
 
         /// <summary>
@@ -118,12 +170,12 @@ namespace AzureUtils
 
         private bool NoTaskIDsLeft()
         {
-            throw new NotImplementedException();
+            return taskIDs.Count == 0;
         }
 
         private bool NumPointsChangedAboveThreshold()
         {
-            throw new NotImplementedException();
+            return TotalNumPointsChanged > NumPointsChangedThreshold;
         }
 
         private void RecalculateCentroids()
