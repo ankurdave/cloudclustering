@@ -159,7 +159,7 @@ namespace AzureUtilsTest
                 M = 1,
                 JobID = Guid.NewGuid()
             };
-            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData); // TODO: Initialize to an appropriate value
+            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
 
             BlobStream cStream = target.Centroids.OpenRead();

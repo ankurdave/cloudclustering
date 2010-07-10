@@ -216,6 +216,9 @@ namespace AzureUtils
                 centroidBytes = c.ToByteArray();
                 centroidsWrite.Write(centroidBytes, 0, Centroid.Size);
             }
+
+            centroidsRead.Close();
+            centroidsWrite.Close();
         }
 
         private void ReturnResults()
