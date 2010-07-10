@@ -52,13 +52,11 @@
     <Compile Include="AzureMessage.cs" />
     <Compile Include="Centroid.cs" />
     <Compile Include="ClusterPoint.cs" />
-    <Compile Include="IAzureHelper.cs" />
     <Compile Include="ICloudBlob.cs" />
     <Compile Include="KMeansJob.cs" />
     <Compile Include="KMeansTask.cs" />
     <Compile Include="Point.cs" />
     <Compile Include="KMeansTaskResult.cs" />
-    <Compile Include="BlockBlobGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="KMeansJobData.cs" />
     <Compile Include="KMeansJobResult.cs" />

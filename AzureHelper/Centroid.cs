@@ -10,12 +10,20 @@ namespace AzureUtils
     {
         public Guid ID { get; set; }
 
-        public Centroid(Guid id, int x, int y) : base(x, y)
+        public Centroid() : base() { }
+
+        public Centroid(Guid id, float x, float y) : base(x, y)
         {
             this.ID = id;
         }
 
-        public static int Size
+        public Centroid(Guid id, Point p)
+            : base(p)
+        {
+            this.ID = id;
+        }
+
+        public new static int Size
         {
             get
             {
@@ -35,15 +43,16 @@ namespace AzureUtils
 
             return stream.ToArray();
         }
-        public static Centroid FromByteArray(byte[] bytes)
+        public new static Centroid FromByteArray(byte[] bytes)
         {
             byte[] guidBytes = new byte[16];
-            Array.Copy(bytes, 0, guidBytes, 0, 16);
+            Array.Copy(bytes, 0, guidBytes, 0, guidBytes.Length);
 
-            return new Centroid(
-                new Guid(guidBytes),
-                BitConverter.ToInt32(bytes, 16),
-                BitConverter.ToInt32(bytes, 20));
+            byte[] pointBytes = new byte[Point.Size];
+            Array.Copy(bytes, 16, pointBytes, 0, pointBytes.Length);
+            Point p = Point.FromByteArray(pointBytes);
+
+            return new Centroid(new Guid(guidBytes), p);
         }
     }
 }

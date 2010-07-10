@@ -103,7 +103,7 @@ namespace AzureUtilsTest
                 }
             }
 
-            CloudBlob points, centroids;
+            CloudBlob points = null, centroids = null;
             try
             {
                 points = c.GetBlobReference("points");
@@ -122,6 +122,69 @@ namespace AzureUtilsTest
                     throw;
                 }
             }
+
+            // Verify that unpacking a ClusterPoint actually yields a point with integer coordinates [-50, 50) and a null centroidID
+            BlobStream pointsStream = points.OpenRead();
+            byte[] pointBytes = new byte[ClusterPoint.Size];
+            pointsStream.Read(pointBytes, 0, ClusterPoint.Size);
+            ClusterPoint p = ClusterPoint.FromByteArray(pointBytes);
+
+            Assert.IsTrue(p.X >= -50 && p.X < 50 && IsInteger(p.X));
+            Assert.IsTrue(p.Y >= -50 && p.Y < 50 && IsInteger(p.Y));
+            Assert.AreEqual(p.CentroidID, Guid.Empty);
+        }
+
+        private bool IsInteger(float x)
+        {
+            return IsCloseToZero(x - Math.Truncate(x));
+        }
+
+        private bool IsCloseToZero(double x)
+        {
+            return (Double.Epsilon >= x) && (x <= Double.Epsilon);
+        }
+
+
+        /// <summary>
+        ///A test for RecalculateCentroids
+        ///</summary>
+        [TestMethod()]
+        [DeploymentItem("AzureHelper.dll")]
+        public void RecalculateCentroidsTest()
+        {
+            KMeansJobData jobData = new KMeansJobData
+            {
+                N = 1,
+                K = 1,
+                M = 1,
+                JobID = Guid.NewGuid()
+            };
+            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData); // TODO: Initialize to an appropriate value
+            target.InitializeStorage();
+
+            BlobStream cStream = target.Centroids.OpenRead();
+            byte[] cBytes = new byte[Centroid.Size];
+            cStream.Read(cBytes, 0, cBytes.Length);
+            cStream.Close();
+            Centroid cOriginal = Centroid.FromByteArray(cBytes);
+
+            target.totalPointsProcessedDataByCentroid[cOriginal.ID] = new PointsProcessedData
+            {
+                NumPointsProcessed = 1,
+                PartialPointSum = new Point(1, 2)
+            };
+
+            target.RecalculateCentroids();
+
+            BlobStream cStreamNew = target.Centroids.OpenRead();
+            byte[] cBytesNew = new byte[Centroid.Size];
+            cStreamNew.Read(cBytesNew, 0, cBytesNew.Length);
+            cStreamNew.Close();
+            Centroid cNew = Centroid.FromByteArray(cBytesNew);
+
+            Assert.AreEqual(cNew.ID, cOriginal.ID);
+            Assert.AreEqual(cNew.X, 1);
+            Assert.AreEqual(cNew.Y, 2);
         }
     }
 }

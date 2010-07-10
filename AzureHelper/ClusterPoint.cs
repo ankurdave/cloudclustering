@@ -10,13 +10,23 @@ namespace AzureUtils
     {
         public Guid CentroidID { get; set; }
 
-        public ClusterPoint(int x, int y, Guid centroidID)
+        public ClusterPoint()
+            : base()
+        { }
+
+        public ClusterPoint(float x, float y, Guid centroidID)
             : base(x, y)
         {
             this.CentroidID = centroidID;
         }
 
-        public static int Size
+        public ClusterPoint(Point p, Guid centroidID)
+            : base(p)
+        {
+            this.CentroidID = centroidID;
+        }
+
+        public new static int Size
         {
             get
             {
@@ -36,15 +46,14 @@ namespace AzureUtils
 
             return stream.ToArray();
         }
-        public static ClusterPoint FromByteArray(byte[] bytes)
+        public new static ClusterPoint FromByteArray(byte[] bytes)
         {
             byte[] guidBytes = new byte[16];
-            Array.Copy(bytes, 8, guidBytes, 0, 16);
-            
-            return new ClusterPoint(
-                BitConverter.ToInt32(bytes, 0),
-                BitConverter.ToInt32(bytes, 4),
-                new Guid(guidBytes));
+            Array.Copy(bytes, Point.Size, guidBytes, 0, guidBytes.Length);
+
+            Point p = Point.FromByteArray(bytes);
+
+            return new ClusterPoint(p, new Guid(guidBytes));
         }
     }
 }

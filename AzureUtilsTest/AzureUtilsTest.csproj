@@ -56,8 +56,11 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CentroidTest.cs" />
+    <Compile Include="ClusterPointTest.cs" />
     <Compile Include="KMeansJobTest.cs" />
     <Compile Include="PointsProcessedDataTest.cs" />
+    <Compile Include="PointTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -65,6 +68,9 @@
       <Project>{8E0F22FA-DAE6-4485-901C-57DE15290BF1}</Project>
       <Name>AzureUtils</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Shadow Include="Test References\AzureHelper.accessor" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

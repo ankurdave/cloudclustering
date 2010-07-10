@@ -9,28 +9,37 @@ using System.Threading;
 
 namespace AzureUtils
 {
-    public static class AzureHelper : IAzureHelper
+    public static class AzureHelper
     {
-        private CloudStorageAccount _storageAccount;
-        private CloudStorageAccount StorageAccount {
-            get {
+        private static CloudStorageAccount _storageAccount;
+        public static CloudStorageAccount StorageAccount
+        {
+            get
+            {
                 if (_storageAccount == null)
                 {
-                    CloudStorageAccount.SetConfigurationSettingPublisher((configName, configSetter) =>
-                        configSetter(RoleEnvironment.GetConfigurationSettingValue(configName)));
-                    _storageAccount = CloudStorageAccount.FromConfigurationSetting("DataConnectionString");
+                    if (RoleEnvironment.IsAvailable)
+                    {
+                        CloudStorageAccount.SetConfigurationSettingPublisher((configName, configSetter) =>
+                            configSetter(RoleEnvironment.GetConfigurationSettingValue(configName)));
+                        _storageAccount = CloudStorageAccount.FromConfigurationSetting("DataConnectionString");
+                    }
+                    else
+                    {
+                        _storageAccount = CloudStorageAccount.DevelopmentStorageAccount;
+                    }
                 }
 
                 return _storageAccount;
             }
         }
-        
+
         /// <summary>
         /// The maximum size of a blob block. It's actually 4MB, but this leaves some margin.
         /// </summary>
         private const int BlobBlockSize = 4000000;
 
-        public void EnqueueMessage(string queueName, AzureMessage message)
+        public static void EnqueueMessage(string queueName, AzureMessage message)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
             queue.CreateIfNotExist();
@@ -38,13 +47,13 @@ namespace AzureUtils
             queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
         }
 
-        public bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)
+        public static bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
             queue.CreateIfNotExist();
 
             CloudQueueMessage queueMessage = queue.GetMessage();
-            AzureMessage message = AzureMessageFactory.CreateMessage(queueName, queueMessage);  
+            AzureMessage message = AzureMessageFactory.CreateMessage(queueName, queueMessage);
 
             if (!condition.Invoke(message))
                 return false;
@@ -57,7 +66,7 @@ namespace AzureUtils
             return true;
         }
 
-        public void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 1000, int iterationLimit = 0)
+        public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 1000, int iterationLimit = 0)
         {
             for (int i = 0; iterationLimit == 0 || i < iterationLimit; i++)
             {
@@ -70,13 +79,6 @@ namespace AzureUtils
                     Thread.Sleep(delayMilliseconds);
                 }
             }
-        }
-
-        public void CreateBlobContainer(string containerName)
-        {
-            CloudBlobClient client = StorageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference(containerName);
-            container.CreateIfNotExist();
         }
     }
 }

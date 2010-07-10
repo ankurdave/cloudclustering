@@ -8,18 +8,24 @@ namespace AzureUtils
 {
     public class Point
     {
-        public int X { get; set; }
-        public int Y { get; set; }
+        public float X { get; set; }
+        public float Y { get; set; }
 
         public Point()
         {
             X = Y = 0;
         }
 
-        public Point(int x, int y)
+        public Point(float x, float y)
         {
             this.X = x;
             this.Y = y;
+        }
+
+        public Point(Point p)
+        {
+            X = p.X;
+            Y = p.Y;
         }
 
         public static Point operator +(Point p1, Point p2)
@@ -27,6 +33,13 @@ namespace AzureUtils
             return new Point(
                 p1.X + p2.X,
                 p1.Y + p2.Y);
+        }
+
+        public static Point operator /(Point p, float a)
+        {
+            return new Point(
+                p.X / a,
+                p.Y / a);
         }
 
         public static int Size
@@ -40,16 +53,16 @@ namespace AzureUtils
         public virtual byte[] ToByteArray()
         {
             MemoryStream stream = new MemoryStream(Size);
-            stream.Write(BitConverter.GetBytes(X), 0, sizeof(int));
-            stream.Write(BitConverter.GetBytes(Y), 0, sizeof(int));
+            stream.Write(BitConverter.GetBytes(X), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(Y), 0, sizeof(float));
 
             return stream.ToArray();
         }
         public static Point FromByteArray(byte[] bytes)
         {
             return new Point(
-                BitConverter.ToInt32(bytes, 0),
-                BitConverter.ToInt32(bytes, 4));
+                BitConverter.ToSingle(bytes, 0),
+                BitConverter.ToSingle(bytes, sizeof(float)));
         }
     }
 }

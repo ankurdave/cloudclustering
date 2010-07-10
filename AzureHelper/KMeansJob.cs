@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Security.Cryptography;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace AzureUtils
 {
@@ -11,17 +12,15 @@ namespace AzureUtils
     {
         private const int PointRange = 50;
         private const int NumPointsChangedThreshold = 0;
-        private ICloudBlob Points { get; set; }
-        private ICloudBlob Centroids { get; set; }
+        private CloudBlob Points { get; set; }
+        private CloudBlob Centroids { get; set; }
         private int TotalNumPointsChanged { get; set; }
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
         private HashSet<Guid> taskIDs = new HashSet<Guid>();
         private KMeansJobData jobData;
-        private IAzureHelper azureHelper;
 
-        public KMeansJob(KMeansJobData jobData, IAzureHelper azureHelper) {
+        public KMeansJob(KMeansJobData jobData) {
             this.jobData = jobData;
-            this.azureHelper = azureHelper;
         }
 
         /// <summary>
@@ -30,26 +29,37 @@ namespace AzureUtils
         public void InitializeStorage()
         {
             // Set up the storage client and the container
-            azureHelper.CreateBlobContainer(jobData.JobID.ToString());
+            CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
+            container.CreateIfNotExist();
             
-            // Set up the random point generator
             Random random = new Random();
-            Func<int, byte[]> randomPoint = (i => new ClusterPoint(
-                    random.Next(-PointRange, PointRange),
-                    random.Next(-PointRange, PointRange),
-                    Guid.Empty).ToByteArray());
 
             // Initialize the points blob with N random ClusterPoints
             Points = container.GetBlockBlobReference("points");
-            BlockBlobGenerator pointsGen = new BlockBlobGenerator(Points, jobData.N);
-            pointsGen.DataGenerator = randomPoint;
-            pointsGen.Run();
-
+            Stream pointsStream = Points.OpenWrite();
+            for (int i = 0; i < jobData.N; i++)
+            {
+                byte[] data = new ClusterPoint(
+                    random.Next(-PointRange, PointRange),
+                    random.Next(-PointRange, PointRange),
+                    Guid.Empty).ToByteArray();
+                pointsStream.Write(data, 0, data.Length);
+            }
+            pointsStream.Close();
+            
             // Initialize the centroids blob with K random Centroids
             Centroids = container.GetBlockBlobReference("centroids");
-            BlockBlobGenerator centroidsGen = new BlockBlobGenerator(Centroids, jobData.K);
-            centroidsGen.DataGenerator = randomPoint;
-            centroidsGen.Run();
+            Stream centroidsStream = Centroids.OpenWrite();
+            for (int i = 0; i < jobData.K; i++)
+            {
+                byte[] data = new Centroid(
+                    Guid.NewGuid(),
+                    random.Next(-PointRange, PointRange),
+                    random.Next(-PointRange, PointRange)).ToByteArray();
+                centroidsStream.Write(data, 0, data.Length);
+            }
+            centroidsStream.Close();
         }
 
         /// <summary>
@@ -139,7 +149,6 @@ namespace AzureUtils
             // Create the new blob
             CloudBlockBlob newBlob = container.GetBlockBlobReference(blobName);
             BlobStream newBlobStream = newBlob.OpenWrite();
-            newBlobStream.BlockSize = AzureHelper.BlobBlockSize;
             newBlobStream.Write(partition, 0, actualLength);
 
             return newBlob;
@@ -180,7 +189,33 @@ namespace AzureUtils
 
         private void RecalculateCentroids()
         {
-            throw new NotImplementedException();
+            CloudBlob centroidsOld = Centroids.CreateSnapshot();
+            BlobStream centroidsRead = centroidsOld.OpenRead();
+            BlobStream centroidsWrite = Centroids.OpenWrite();
+
+            byte[] centroidBytes = new byte[Centroid.Size];
+            while (centroidsRead.Position + Centroid.Size <= centroidsRead.Length)
+            {
+                centroidsRead.Read(centroidBytes, 0, Centroid.Size);
+                Centroid c = Centroid.FromByteArray(centroidBytes);
+
+                Point newCentroidPoint;
+                if (totalPointsProcessedDataByCentroid[c.ID] != null)
+                {
+                    newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
+                     / (float)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
+                }
+                else
+                {
+                    newCentroidPoint = new Point();
+                }
+
+                c.X = newCentroidPoint.X;
+                c.Y = newCentroidPoint.Y;
+
+                centroidBytes = c.ToByteArray();
+                centroidsWrite.Write(centroidBytes, 0, Centroid.Size);
+            }
         }
 
         private void ReturnResults()
