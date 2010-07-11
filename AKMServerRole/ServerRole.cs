@@ -12,7 +12,7 @@ using AzureUtils;
 
 namespace AKMServerRole
 {
-    public class WorkerRole : RoleEntryPoint
+    public class ServerRole : RoleEntryPoint
     {
         private Dictionary<Guid, KMeansJob> jobs = new Dictionary<Guid, KMeansJob>();
 
@@ -20,8 +20,8 @@ namespace AKMServerRole
         {
             while (true)
             {
-                AzureHelper.PollForMessage("serverrequest", message => true, ProcessNewJob);
-                AzureHelper.PollForMessage("workerresponse", message => true, ProcessWorkerResponse);
+                AzureHelper.PollForMessage<KMeansJobData>("serverrequest", message => true, ProcessNewJob);
+                AzureHelper.PollForMessage<KMeansTaskResult>("workerresponse", message => true, ProcessWorkerResponse);
             
                 Thread.Sleep(1000);
             }
@@ -31,10 +31,8 @@ namespace AKMServerRole
         /// Handles a request for a new k-means job. Sets up a new job and starts it off.
         /// </summary>
         /// <param name="message">The job request. Must be of type KMeansJobData.</param>
-        private bool ProcessNewJob(AzureMessage message)
+        private bool ProcessNewJob(KMeansJobData job)
         {
-            KMeansJobData job = (KMeansJobData)message;
-
             jobs[job.JobID] = new KMeansJob(job);
             jobs[job.JobID].InitializeStorage();
             jobs[job.JobID].EnqueueTasks();
@@ -46,10 +44,8 @@ namespace AKMServerRole
         /// Handles a worker response as part of a running k-means job. Looks up the appropriate job and passes the worker's response to it.
         /// </summary>
         /// <param name="message">The worker response. Must be of type KMeansTaskResult.</param>
-        private bool ProcessWorkerResponse(AzureMessage message)
+        private bool ProcessWorkerResponse(KMeansTaskResult taskResult)
         {
-            KMeansTaskResult taskResult = (KMeansTaskResult)message;
-
             return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult);
         }
 

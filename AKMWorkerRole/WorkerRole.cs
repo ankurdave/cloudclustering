@@ -8,6 +8,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Diagnostics;
 using Microsoft.WindowsAzure.ServiceRuntime;
 using Microsoft.WindowsAzure.StorageClient;
+using AzureUtils;
 
 namespace AKMWorkerRole
 {
@@ -15,14 +16,15 @@ namespace AKMWorkerRole
     {
         public override void Run()
         {
-            // This is a sample worker implementation. Replace with your logic.
-            Trace.WriteLine("AKMWorkerRole entry point called", "Information");
-
             while (true)
             {
-                Thread.Sleep(10000);
-                Trace.WriteLine("Working", "Information");
+                AzureHelper.WaitForMessage("workerrequest", message => true, ProcessNewTask);
             }
+        }
+
+        private bool ProcessNewTask(AzureMessage message)
+        {
+
         }
 
         public override bool OnStart()
