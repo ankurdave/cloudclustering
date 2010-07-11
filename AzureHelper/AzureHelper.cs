@@ -34,11 +34,6 @@ namespace AzureUtils
             }
         }
 
-        /// <summary>
-        /// The maximum size of a blob block. It's actually 4MB, but this leaves some margin.
-        /// </summary>
-        private const int BlobBlockSize = 4000000;
-
         public static void EnqueueMessage(string queueName, AzureMessage message)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);

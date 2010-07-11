@@ -124,9 +124,12 @@ namespace AzureUtilsTest
             }
 
             // Verify that unpacking a ClusterPoint actually yields a point with integer coordinates [-50, 50) and a null centroidID
-            BlobStream pointsStream = points.OpenRead();
-            byte[] pointBytes = new byte[ClusterPoint.Size];
-            pointsStream.Read(pointBytes, 0, ClusterPoint.Size);
+            byte[] pointBytes;
+            using (BlobStream pointsStream = points.OpenRead())
+            {
+                pointBytes = new byte[ClusterPoint.Size];
+                pointsStream.Read(pointBytes, 0, ClusterPoint.Size);
+            }
             ClusterPoint p = ClusterPoint.FromByteArray(pointBytes);
 
             Assert.IsTrue(p.X >= -50 && p.X < 50 && IsInteger(p.X));
@@ -162,10 +165,11 @@ namespace AzureUtilsTest
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
 
-            BlobStream cStream = target.Centroids.OpenRead();
             byte[] cBytes = new byte[Centroid.Size];
-            cStream.Read(cBytes, 0, cBytes.Length);
-            cStream.Close();
+            using (BlobStream cStream = target.Centroids.OpenRead())
+            {
+                cStream.Read(cBytes, 0, cBytes.Length);
+            }
             Centroid cOriginal = Centroid.FromByteArray(cBytes);
 
             target.totalPointsProcessedDataByCentroid[cOriginal.ID] = new PointsProcessedData
@@ -176,10 +180,11 @@ namespace AzureUtilsTest
 
             target.RecalculateCentroids();
 
-            BlobStream cStreamNew = target.Centroids.OpenRead();
             byte[] cBytesNew = new byte[Centroid.Size];
-            cStreamNew.Read(cBytesNew, 0, cBytesNew.Length);
-            cStreamNew.Close();
+            using (BlobStream cStreamNew = target.Centroids.OpenRead())
+            {
+                cStreamNew.Read(cBytesNew, 0, cBytesNew.Length);
+            }
             Centroid cNew = Centroid.FromByteArray(cBytesNew);
 
             Assert.AreEqual(cNew.ID, cOriginal.ID);

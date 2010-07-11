@@ -24,7 +24,16 @@ namespace AKMWorkerRole
 
         private bool ProcessNewTask(AzureMessage message)
         {
+            KMeansTask task = message as KMeansTask;
 
+            // Process the task
+            KMeansTaskProcessor taskProcessor = new KMeansTaskProcessor(task);
+            taskProcessor.Run();
+
+            // Send the result back
+            AzureHelper.EnqueueMessage("workerresponse", taskProcessor.TaskResult);
+
+            return true;
         }
 
         public override bool OnStart()

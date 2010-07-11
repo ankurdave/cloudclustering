@@ -8,27 +8,11 @@ namespace AzureUtils
     public class KMeansTaskResult : KMeansTask
     {
         public int NumPointsChanged { get; set; }
-        public Dictionary<Centroid, PointsProcessedData> PointsProcessedDataByCentroid { get; set; }
-    }
+        public Dictionary<Guid, PointsProcessedData> PointsProcessedDataByCentroid { get; set; }
 
-    public class PointsProcessedData
-    {
-        public int NumPointsProcessed { get; set; }
-        public Point PartialPointSum { get; set; }
-
-        public PointsProcessedData()
-        {
-            NumPointsProcessed = 0;
-            PartialPointSum = new Point();
-        }
-
-        public static PointsProcessedData operator +(PointsProcessedData d1, PointsProcessedData d2)
-        {
-            return new PointsProcessedData
-            {
-                NumPointsProcessed = d1.NumPointsProcessed + d2.NumPointsProcessed,
-                PartialPointSum = d1.PartialPointSum + d2.PartialPointSum
-            };
-        }
+        public KMeansTaskResult()
+            : base() { }
+        public KMeansTaskResult(KMeansTask task)
+            : base(task) { }
     }
 }

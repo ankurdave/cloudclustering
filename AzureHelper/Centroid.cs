@@ -54,5 +54,20 @@ namespace AzureUtils
 
             return new Centroid(new Guid(guidBytes), p);
         }
+
+        public static List<Centroid> ListFromByteStream(Stream stream)
+        {
+            List<Centroid> centroids = new List<Centroid>();
+            
+            byte[] centroidBytes = new byte[Centroid.Size];
+            while (stream.Position + Centroid.Size <= stream.Length)
+            {
+                stream.Read(centroidBytes, 0, Centroid.Size);
+                Centroid c = Centroid.FromByteArray(centroidBytes);
+                centroids.Add(c);
+            }
+
+            return centroids;
+        }
     }
 }

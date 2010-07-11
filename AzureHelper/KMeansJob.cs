@@ -36,30 +36,32 @@ namespace AzureUtils
             Random random = new Random();
 
             // Initialize the points blob with N random ClusterPoints
-            Points = container.GetBlockBlobReference("points");
-            Stream pointsStream = Points.OpenWrite();
-            for (int i = 0; i < jobData.N; i++)
+            Points = container.GetBlobReference("points");
+            using (Stream pointsStream = Points.OpenWrite())
             {
-                byte[] data = new ClusterPoint(
-                    random.Next(-PointRange, PointRange),
-                    random.Next(-PointRange, PointRange),
-                    Guid.Empty).ToByteArray();
-                pointsStream.Write(data, 0, data.Length);
+                for (int i = 0; i < jobData.N; i++)
+                {
+                    byte[] data = new ClusterPoint(
+                        random.Next(-PointRange, PointRange),
+                        random.Next(-PointRange, PointRange),
+                        Guid.Empty).ToByteArray();
+                    pointsStream.Write(data, 0, data.Length);
+                }
             }
-            pointsStream.Close();
             
             // Initialize the centroids blob with K random Centroids
-            Centroids = container.GetBlockBlobReference("centroids");
-            Stream centroidsStream = Centroids.OpenWrite();
-            for (int i = 0; i < jobData.K; i++)
+            Centroids = container.GetBlobReference("centroids");
+            using (Stream centroidsStream = Centroids.OpenWrite())
             {
-                byte[] data = new Centroid(
-                    Guid.NewGuid(),
-                    random.Next(-PointRange, PointRange),
-                    random.Next(-PointRange, PointRange)).ToByteArray();
-                centroidsStream.Write(data, 0, data.Length);
+                for (int i = 0; i < jobData.K; i++)
+                {
+                    byte[] data = new Centroid(
+                        Guid.NewGuid(),
+                        random.Next(-PointRange, PointRange),
+                        random.Next(-PointRange, PointRange)).ToByteArray();
+                    centroidsStream.Write(data, 0, data.Length);
+                }
             }
-            centroidsStream.Close();
         }
 
         /// <summary>
@@ -85,7 +87,7 @@ namespace AzureUtils
         }
 
         /// <summary>
-        /// Handles a worker's taskResult from a running k-means job. Adds up the partial sums from the taskResult.
+        /// Handles a worker's TaskResult from a running k-means job. Adds up the partial sums from the TaskResult.
         /// </summary>
         /// <param name="message"></param>
         /// <returns>False if the given task result has already been counted, true otherwise.</returns>
@@ -136,45 +138,51 @@ namespace AzureUtils
         private CloudBlob CopyPointPartition(CloudBlob points, int partitionNumber, int totalPartitions, CloudBlobContainer container, String blobName)
         {
             // Calculate what portion of points to read
-            BlobStream pointsStream = points.OpenRead();
-            long numPoints = pointsStream.Length / ClusterPoint.Size;
-            long partitionLength = (long)Math.Ceiling((float)numPoints / totalPartitions);
-            long startByte = partitionNumber * partitionLength;
+            byte[] partition;
+            int actualLength;
+            using (BlobStream pointsStream = points.OpenRead())
+            {
+                long numPoints = pointsStream.Length / ClusterPoint.Size;
+                long partitionLength = (long)Math.Ceiling((float)numPoints / totalPartitions);
+                long startByte = partitionNumber * partitionLength;
 
-            // Read it into partition
-            byte[] partition = new byte[partitionLength];
-            pointsStream.Position = startByte;
-            int actualLength = pointsStream.Read(partition, 0, (int)partitionLength);
+                // Read it into partition
+                partition = new byte[partitionLength];
+                pointsStream.Position = startByte;
+                actualLength = pointsStream.Read(partition, 0, (int)partitionLength);
+            }
 
             // Create the new blob
-            CloudBlockBlob newBlob = container.GetBlockBlobReference(blobName);
-            BlobStream newBlobStream = newBlob.OpenWrite();
-            newBlobStream.Write(partition, 0, actualLength);
+            CloudBlob newBlob = container.GetBlobReference(blobName);
+            using (BlobStream newBlobStream = newBlob.OpenWrite())
+            {
+                newBlobStream.Write(partition, 0, actualLength);
+            }
 
             return newBlob;
         }
 
         /// <summary>
-        /// Sums the given taskResult's points processed data with the totals.
+        /// Sums the given TaskResult's points processed data with the totals.
         /// </summary>
-        /// <param name="taskResult"></param>
+        /// <param name="TaskResult"></param>
         private void AddDataFromTaskResult(KMeansTaskResult taskResult)
         {
             TotalNumPointsChanged += taskResult.NumPointsChanged;
-            foreach (KeyValuePair<Centroid, PointsProcessedData> pointsProcessedDataForCentroid in taskResult.PointsProcessedDataByCentroid)
+            foreach (KeyValuePair<Guid, PointsProcessedData> pointsProcessedDataForCentroid in taskResult.PointsProcessedDataByCentroid)
             {
                 AddPointsProcessedDataForCentroid(pointsProcessedDataForCentroid.Key, pointsProcessedDataForCentroid.Value);
             }
         }
 
-        private void AddPointsProcessedDataForCentroid(Centroid centroid, PointsProcessedData data)
+        private void AddPointsProcessedDataForCentroid(Guid centroidID, PointsProcessedData data)
         {
-            if (!totalPointsProcessedDataByCentroid.ContainsKey(centroid.ID))
+            if (!totalPointsProcessedDataByCentroid.ContainsKey(centroidID))
             {
-                totalPointsProcessedDataByCentroid[centroid.ID] = new PointsProcessedData();
+                totalPointsProcessedDataByCentroid[centroidID] = new PointsProcessedData();
             }
 
-            totalPointsProcessedDataByCentroid[centroid.ID] += data;
+            totalPointsProcessedDataByCentroid[centroidID] += data;
         }
 
         private bool NoTaskIDsLeft()
@@ -189,36 +197,32 @@ namespace AzureUtils
 
         private void RecalculateCentroids()
         {
-            CloudBlob centroidsOld = Centroids.CreateSnapshot();
-            BlobStream centroidsRead = centroidsOld.OpenRead();
-            BlobStream centroidsWrite = Centroids.OpenWrite();
-
-            byte[] centroidBytes = new byte[Centroid.Size];
-            while (centroidsRead.Position + Centroid.Size <= centroidsRead.Length)
+            using (BlobStream centroidsRead = Centroids.OpenRead(), centroidsWrite = Centroids.OpenWrite())
             {
-                centroidsRead.Read(centroidBytes, 0, Centroid.Size);
-                Centroid c = Centroid.FromByteArray(centroidBytes);
-
-                Point newCentroidPoint;
-                if (totalPointsProcessedDataByCentroid[c.ID] != null)
+                byte[] centroidBytes = new byte[Centroid.Size];
+                while (centroidsRead.Position + Centroid.Size <= centroidsRead.Length)
                 {
-                    newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
-                     / (float)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
-                }
-                else
-                {
-                    newCentroidPoint = new Point();
-                }
+                    centroidsRead.Read(centroidBytes, 0, Centroid.Size);
+                    Centroid c = Centroid.FromByteArray(centroidBytes);
 
-                c.X = newCentroidPoint.X;
-                c.Y = newCentroidPoint.Y;
+                    Point newCentroidPoint;
+                    if (totalPointsProcessedDataByCentroid[c.ID] != null)
+                    {
+                        newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
+                         / (float)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
+                    }
+                    else
+                    {
+                        newCentroidPoint = new Point();
+                    }
 
-                centroidBytes = c.ToByteArray();
-                centroidsWrite.Write(centroidBytes, 0, Centroid.Size);
+                    c.X = newCentroidPoint.X;
+                    c.Y = newCentroidPoint.Y;
+
+                    centroidBytes = c.ToByteArray();
+                    centroidsWrite.Write(centroidBytes, 0, Centroid.Size);
+                }
             }
-
-            centroidsRead.Close();
-            centroidsWrite.Close();
         }
 
         private void ReturnResults()

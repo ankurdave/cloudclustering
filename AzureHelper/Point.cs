@@ -64,5 +64,31 @@ namespace AzureUtils
                 BitConverter.ToSingle(bytes, 0),
                 BitConverter.ToSingle(bytes, sizeof(float)));
         }
+
+        public static float Distance(Point p1, Point p2)
+        {
+            return (float)Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2));
+        }
+    }
+
+    public static class PointExtension
+    {
+        public static T MinElement<T>(this IEnumerable<T> list, Func<T, float> comparer)
+        {
+            T minElement = default(T);
+            float minValue = float.MaxValue;
+            foreach (T element in list)
+            {
+                float value = comparer.Invoke(element);
+
+                if (value < minValue)
+                {
+                    minElement = element;
+                    minValue = value;
+                }
+            }
+
+            return minElement;
+        }
     }
 }

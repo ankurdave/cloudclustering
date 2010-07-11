@@ -20,8 +20,8 @@ namespace AKMServerRole
         {
             while (true)
             {
-                AzureHelper.PollForMessage<KMeansJobData>("serverrequest", message => true, ProcessNewJob);
-                AzureHelper.PollForMessage<KMeansTaskResult>("workerresponse", message => true, ProcessWorkerResponse);
+                AzureHelper.PollForMessage("serverrequest", message => true, ProcessNewJob);
+                AzureHelper.PollForMessage("workerresponse", message => true, ProcessWorkerResponse);
             
                 Thread.Sleep(1000);
             }
@@ -31,8 +31,10 @@ namespace AKMServerRole
         /// Handles a request for a new k-means job. Sets up a new job and starts it off.
         /// </summary>
         /// <param name="message">The job request. Must be of type KMeansJobData.</param>
-        private bool ProcessNewJob(KMeansJobData job)
+        private bool ProcessNewJob(AzureMessage message)
         {
+            KMeansJobData job = message as KMeansJobData;
+
             jobs[job.JobID] = new KMeansJob(job);
             jobs[job.JobID].InitializeStorage();
             jobs[job.JobID].EnqueueTasks();
@@ -44,8 +46,10 @@ namespace AKMServerRole
         /// Handles a worker response as part of a running k-means job. Looks up the appropriate job and passes the worker's response to it.
         /// </summary>
         /// <param name="message">The worker response. Must be of type KMeansTaskResult.</param>
-        private bool ProcessWorkerResponse(KMeansTaskResult taskResult)
+        private bool ProcessWorkerResponse(AzureMessage message)
         {
+            KMeansTaskResult taskResult = message as KMeansTaskResult;
+
             return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult);
         }
 
