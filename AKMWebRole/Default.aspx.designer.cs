@@ -76,6 +76,24 @@ namespace AKMWebRole {
         protected global::System.Web.UI.WebControls.Label Status;
         
         /// <summary>
+        /// Points control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Points;
+        
+        /// <summary>
+        /// Centroids control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Centroids;
+        
+        /// <summary>
         /// UpdateTimer control.
         /// </summary>
         /// <remarks>

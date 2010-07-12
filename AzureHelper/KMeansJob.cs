@@ -12,6 +12,7 @@ namespace AzureUtils
     {
         private const int PointRange = 50;
         private const int NumPointsChangedThreshold = 0;
+
         private CloudBlob Points { get; set; }
         private CloudBlob Centroids { get; set; }
         private int TotalNumPointsChanged { get; set; }
@@ -31,12 +32,12 @@ namespace AzureUtils
             // Set up the storage client and the container
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
-            container.CreateIfNotExist();
+            container.Create();
             
             Random random = new Random();
 
             // Initialize the points blob with N random ClusterPoints
-            Points = container.GetBlobReference("points");
+            Points = container.GetBlobReference(AzureHelper.PointsBlob);
             using (Stream pointsStream = Points.OpenWrite())
             {
                 for (int i = 0; i < jobData.N; i++)
@@ -50,7 +51,7 @@ namespace AzureUtils
             }
             
             // Initialize the centroids blob with K random Centroids
-            Centroids = container.GetBlobReference("centroids");
+            Centroids = container.GetBlobReference(AzureHelper.CentroidsBlob);
             using (Stream centroidsStream = Centroids.OpenWrite())
             {
                 for (int i = 0; i < jobData.K; i++)
@@ -71,23 +72,26 @@ namespace AzureUtils
         {
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
-            container.CreateIfNotExist();
 
             for (int i = 0; i < jobData.M; i++)
             {
-                KMeansTask task = new KMeansTask(jobData);
-                task.TaskID = Guid.NewGuid();
-                task.Points = CopyPointPartition(Points, i, jobData.M, container, task.TaskID.ToString());
-                task.Centroids = Centroids;
+                Guid taskID = Guid.NewGuid();
+                CloudBlob pointPartition = CopyPointPartition(Points, i, jobData.M, container, taskID.ToString());
 
-                taskIDs.Add(task.TaskID);
+                KMeansTask task = new KMeansTask(
+                    jobData,
+                    taskID,
+                    pointPartition.Uri,
+                    Centroids.Uri);
 
-                AzureHelper.EnqueueMessage("workerrequest", task);
+                taskIDs.Add(taskID);
+
+                AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, task);
             }
         }
 
         /// <summary>
-        /// Handles a worker's TaskResult from a running k-means job. Adds up the partial sums from the TaskResult.
+        /// Handles a worker's TaskResult from a running k-means jobData. Adds up the partial sums from the TaskResult.
         /// </summary>
         /// <param name="message"></param>
         /// <returns>False if the given task result has already been counted, true otherwise.</returns>
@@ -96,11 +100,15 @@ namespace AzureUtils
             // Make sure we're actually still waiting for a result for this task
             // If not, this might be a duplicate queue message
             if (!taskIDs.Contains(taskResult.TaskID))
+            {
+                taskIDs.Remove(taskResult.TaskID);
                 return false;
-            taskIDs.Remove(taskResult.TaskID);
+            }
 
             // Add up the partial sums
             AddDataFromTaskResult(taskResult);
+
+            taskIDs.Remove(taskResult.TaskID);
 
             // If this is the last worker to return, this iteration is done and we should start the next one
             if (NoTaskIDsLeft())
@@ -227,7 +235,9 @@ namespace AzureUtils
 
         private void ReturnResults()
         {
-            throw new NotImplementedException();
+            KMeansJobResult jobResult = new KMeansJobResult(jobData, Points.Uri, Centroids.Uri);
+            AzureHelper.EnqueueMessage(AzureHelper.ServerResponseQueue, jobResult);
+            // TODO: Delete this KMeansJob from the list of jobs in ServerRole
         }
     }
 }

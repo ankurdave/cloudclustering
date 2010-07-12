@@ -5,6 +5,7 @@ using System.Text;
 
 namespace AzureUtils
 {
+    [Serializable]
     public class PointsProcessedData
     {
         public int NumPointsProcessed { get; set; }

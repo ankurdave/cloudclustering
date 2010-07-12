@@ -16,6 +16,8 @@ namespace AzureUtils
         public KMeansTaskProcessor(KMeansTask task)
         {
             this.task = task;
+            
+            this.TaskResult = new KMeansTaskResult(task);
         }
 
         public void Run()
@@ -29,24 +31,18 @@ namespace AzureUtils
         /// </summary>
         private void ProcessPoints()
         {
-            InitializeTaskResult();
-            using (BlobStream pointsStreamRead = task.Points.OpenRead(), pointsStreamWrite = task.Points.OpenWrite())
+            CloudBlob points = AzureHelper.GetBlob(task.Points);
+            using (BlobStream pointsStreamRead = points.OpenRead(), pointsStreamWrite = points.OpenWrite())
             {
                 ClusterPoint.MapByteStream(pointsStreamRead, pointsStreamWrite,
                     clusterPoint => AssignClusterPointToNearestCentroid(clusterPoint));
             }
         }
 
-        private void InitializeTaskResult()
-        {
-            TaskResult = new KMeansTaskResult(task);
-            TaskResult.NumPointsChanged = 0;
-            TaskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
-        }
-
         private void InitializeCentroids()
         {
-            using (BlobStream centroidsStream = task.Centroids.OpenRead())
+            CloudBlob centroidsBlob = AzureHelper.GetBlob(task.Centroids);
+            using (BlobStream centroidsStream = centroidsBlob.OpenRead())
             {
                 centroids = Centroid.ListFromByteStream(centroidsStream);
             }

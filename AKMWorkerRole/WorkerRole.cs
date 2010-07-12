@@ -18,20 +18,24 @@ namespace AKMWorkerRole
         {
             while (true)
             {
-                AzureHelper.WaitForMessage("workerrequest", message => true, ProcessNewTask);
+                System.Diagnostics.Trace.TraceInformation("[WorkerRole] Waiting for messages...");
+                AzureHelper.WaitForMessage(AzureHelper.WorkerRequestQueue, message => true, ProcessNewTask);
             }
         }
 
         private bool ProcessNewTask(AzureMessage message)
         {
             KMeansTask task = message as KMeansTask;
+            
+            System.Diagnostics.Trace.TraceInformation("[WorkerRole] ProcessNewTask(jobID={1}, taskID={0})", task.TaskID, task.JobID);
 
             // Process the task
             KMeansTaskProcessor taskProcessor = new KMeansTaskProcessor(task);
             taskProcessor.Run();
 
             // Send the result back
-            AzureHelper.EnqueueMessage("workerresponse", taskProcessor.TaskResult);
+            taskProcessor.TaskResult.SavePointsProcessedDataByCentroid();
+            AzureHelper.EnqueueMessage(AzureHelper.WorkerResponseQueue, taskProcessor.TaskResult);
 
             return true;
         }

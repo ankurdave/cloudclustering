@@ -11,6 +11,13 @@ namespace AzureUtils
 {
     public static class AzureHelper
     {
+        public const string ServerRequestQueue = "serverrequest";
+        public const string WorkerResponseQueue = "workerresponse";
+        public const string WorkerRequestQueue = "workerrequest";
+        public const string ServerResponseQueue = "serverresponse"; 
+        public const string PointsBlob = "points";
+        public const string CentroidsBlob = "centroids";
+
         private static CloudStorageAccount _storageAccount;
         public static CloudStorageAccount StorageAccount
         {
@@ -48,6 +55,10 @@ namespace AzureUtils
             queue.CreateIfNotExist();
 
             CloudQueueMessage queueMessage = queue.GetMessage();
+
+            if (queueMessage == null)
+                return false;
+
             AzureMessage message = CreateAzureMessage(queueName, queueMessage);
 
             if (!condition.Invoke(message))
@@ -64,13 +75,13 @@ namespace AzureUtils
         private static AzureMessage CreateAzureMessage(string queueName, CloudQueueMessage queueMessage)
         {
             switch (queueName) {
-                case "serverrequest":
+                case ServerRequestQueue:
                     return KMeansJobData.FromMessage<KMeansJobData>(queueMessage);
-                case "serverresponse":
+                case ServerResponseQueue:
                     return KMeansJobResult.FromMessage<KMeansJobResult>(queueMessage);
-                case "workerrequest":
+                case WorkerRequestQueue:
                     return KMeansTask.FromMessage<KMeansTask>(queueMessage);
-                case "workerresponse":
+                case WorkerResponseQueue:
                     return KMeansTaskResult.FromMessage<KMeansTaskResult>(queueMessage);
                 default:
                     throw new InvalidOperationException();
@@ -90,6 +101,11 @@ namespace AzureUtils
                     Thread.Sleep(delayMilliseconds);
                 }
             }
+        }
+
+        public static CloudBlob GetBlob(Uri uri)
+        {
+            return new CloudBlob(uri.AbsoluteUri, StorageAccount.Credentials);
         }
     }
 }

@@ -20,8 +20,9 @@ namespace AKMServerRole
         {
             while (true)
             {
-                AzureHelper.PollForMessage("serverrequest", message => true, ProcessNewJob);
-                AzureHelper.PollForMessage("workerresponse", message => true, ProcessWorkerResponse);
+                System.Diagnostics.Trace.TraceInformation("[ServerRole] Waiting for messages...");
+                AzureHelper.PollForMessage(AzureHelper.ServerRequestQueue, message => true, ProcessNewJob);
+                AzureHelper.PollForMessage(AzureHelper.WorkerResponseQueue, message => true, ProcessWorkerResponse);
             
                 Thread.Sleep(1000);
             }
@@ -33,11 +34,13 @@ namespace AKMServerRole
         /// <param name="message">The job request. Must be of type KMeansJobData.</param>
         private bool ProcessNewJob(AzureMessage message)
         {
-            KMeansJobData job = message as KMeansJobData;
+            KMeansJobData jobData = message as KMeansJobData;
 
-            jobs[job.JobID] = new KMeansJob(job);
-            jobs[job.JobID].InitializeStorage();
-            jobs[job.JobID].EnqueueTasks();
+            System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessNewJob(jobID={0})", jobData.JobID);
+
+            jobs[jobData.JobID] = new KMeansJob(jobData);
+            jobs[jobData.JobID].InitializeStorage();
+            jobs[jobData.JobID].EnqueueTasks();
             
             return true;
         }
@@ -49,6 +52,9 @@ namespace AKMServerRole
         private bool ProcessWorkerResponse(AzureMessage message)
         {
             KMeansTaskResult taskResult = message as KMeansTaskResult;
+            taskResult.RestorePointsProcessedDataByCentroid();
+
+            System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessWorkerResponse(jobID={0}, taskID={1})", taskResult.JobID, taskResult.TaskID);
 
             return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult);
         }

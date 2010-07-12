@@ -6,6 +6,7 @@ using System.IO;
 
 namespace AzureUtils
 {
+    [Serializable]
     public class Point
     {
         public float X { get; set; }

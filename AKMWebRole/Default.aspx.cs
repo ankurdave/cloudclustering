@@ -5,6 +5,8 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using AzureUtils;
+using Microsoft.WindowsAzure.StorageClient;
+using System.Text;
 
 namespace AKMWebRole
 {
@@ -22,12 +24,8 @@ namespace AKMWebRole
             FreezeUI();
             Status.Text = "Running...";
 
-            AzureHelper.EnqueueMessage("serverrequests", new KMeansJobData {
-                JobID = jobID = Guid.NewGuid(),
-                N = int.Parse(N.Text),
-                K = int.Parse(K.Text),
-                M = int.Parse(M.Text)
-            });
+            jobID = Guid.NewGuid();
+            AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, new KMeansJobData(jobID, int.Parse(N.Text), int.Parse(K.Text), int.Parse(M.Text)));
 
             WaitForResults();
         }
@@ -37,7 +35,8 @@ namespace AKMWebRole
             Run.Enabled = N.Enabled = K.Enabled = M.Enabled = !freeze;
         }
 
-        private void FreezeUI() {
+        private void FreezeUI()
+        {
             FreezeUnfreezeUI(true);
         }
 
@@ -45,7 +44,7 @@ namespace AKMWebRole
         {
             FreezeUnfreezeUI(false);
         }
-        
+
         private void WaitStopWaitingForResults(bool wait = true)
         {
             UpdateTimer.Enabled = wait;
@@ -63,15 +62,48 @@ namespace AKMWebRole
         {
             Status.Text += ".";
 
-            AzureHelper.PollForMessage("serverresponses",
+            AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
                 message => ((KMeansJobResult)message).JobID == jobID,
-                message =>
+                ShowResults);
+        }
+
+        private bool ShowResults(AzureMessage message)
+        {
+            KMeansJobResult jobResult = message as KMeansJobResult;
+
+            StopWaitingForResults();
+            Status.Text = "Done!";
+
+            CloudBlob points = AzureHelper.GetBlob(jobResult.Points);
+            using (BlobStream pointsStream = points.OpenRead())
+            {
+                StringBuilder pointsString = new StringBuilder();
+                byte[] bytes = new byte[ClusterPoint.Size];
+                while (pointsStream.Position + ClusterPoint.Size <= pointsStream.Length)
                 {
-                    StopWaitingForResults();
-                    Status.Text = "Done! " + message.ToString();
-                    UnfreezeUI();
-                    return true;
-                });
+                    pointsStream.Read(bytes, 0, bytes.Length);
+                    ClusterPoint p = ClusterPoint.FromByteArray(bytes);
+                    pointsString.AppendFormat("({0},{1},{2}), ", p.X, p.Y, p.CentroidID);
+                }
+                Points.Text = pointsString.ToString();
+            }
+
+            CloudBlob centroids = AzureHelper.GetBlob(jobResult.Centroids);
+            using (BlobStream centroidsStream = centroids.OpenRead())
+            {
+                StringBuilder centroidsString = new StringBuilder();
+                byte[] bytes = new byte[Centroid.Size];
+                while (centroidsStream.Position + Centroid.Size <= centroidsStream.Length)
+                {
+                    centroidsStream.Read(bytes, 0, bytes.Length);
+                    Centroid p = Centroid.FromByteArray(bytes);
+                    centroidsString.AppendFormat("({0},{1},{2}), ", p.ID, p.X, p.Y);
+                }
+                Centroids.Text = centroidsString.ToString();
+            }
+
+            UnfreezeUI();
+            return true;
         }
     }
 }

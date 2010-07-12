@@ -72,13 +72,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void InitializeStorageTest()
         {
-            KMeansJobData jobData = new KMeansJobData
-            {
-                JobID = Guid.NewGuid(),
-                K = 2,
-                M = 4,
-                N = 6
-            };
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, 4, 6);
             KMeansJob target = new KMeansJob(jobData);
             target.InitializeStorage();
             
@@ -155,13 +149,7 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void RecalculateCentroidsTest()
         {
-            KMeansJobData jobData = new KMeansJobData
-            {
-                N = 1,
-                K = 1,
-                M = 1,
-                JobID = Guid.NewGuid()
-            };
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, 1, 1);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
 

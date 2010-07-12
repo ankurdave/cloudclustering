@@ -14,14 +14,20 @@ namespace AzureUtils
         public int K { get; set; }
         public int M { get; set; }
 
-        public KMeansJobData() { }
-
-        public KMeansJobData(KMeansJobData job)
+        public KMeansJobData(Guid jobID, int n, int k, int m)
         {
-            JobID = job.JobID;
-            N = job.N;
-            K = job.K;
-            M = job.M;
+            this.JobID = jobID;
+            this.N = n;
+            this.K = k;
+            this.M = m;
+        }
+
+        public KMeansJobData(KMeansJobData jobData)
+        {
+            JobID = jobData.JobID;
+            N = jobData.N;
+            K = jobData.K;
+            M = jobData.M;
         }
     }
 }

@@ -70,22 +70,15 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void EnqueueWaitForMessageTest()
         {
-            string queueName = "serverrequest";
-            KMeansJobData message = new KMeansJobData
-            {
-                JobID = Guid.Empty,
-                K = 1,
-                M = 2,
-                N = 3
-            };
-            AzureHelper.EnqueueMessage(queueName, message);
+            KMeansJobData message = new KMeansJobData(Guid.Empty, 1, 2, 3);
+            AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, message);
 
             KMeansJobData responseMessage = null;
-            AzureHelper.WaitForMessage(queueName, msg => ((KMeansJobData)msg).N == 3, msg =>
+            AzureHelper.WaitForMessage(AzureHelper.ServerRequestQueue, msg => ((KMeansJobData)msg).N == 3, msg =>
             {
                 responseMessage = (KMeansJobData)msg;
                 return true;
-            });
+            }, 100, 10);
 
             Assert.AreEqual(message.JobID, responseMessage.JobID);
             Assert.AreEqual(message.K, responseMessage.K);
