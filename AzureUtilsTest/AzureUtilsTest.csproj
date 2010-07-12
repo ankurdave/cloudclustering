@@ -56,6 +56,8 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AzureHelperTest.cs" />
+    <Compile Include="AzureMessageTest.cs" />
     <Compile Include="CentroidTest.cs" />
     <Compile Include="ClusterPointTest.cs" />
     <Compile Include="KMeansJobTest.cs" />

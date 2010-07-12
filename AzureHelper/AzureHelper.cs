@@ -48,7 +48,7 @@ namespace AzureUtils
             queue.CreateIfNotExist();
 
             CloudQueueMessage queueMessage = queue.GetMessage();
-            AzureMessage message = AzureMessageFactory.CreateMessage(queueName, queueMessage);
+            AzureMessage message = CreateAzureMessage(queueName, queueMessage);
 
             if (!condition.Invoke(message))
                 return false;
@@ -59,6 +59,22 @@ namespace AzureUtils
             queue.DeleteMessage(queueMessage);
 
             return true;
+        }
+
+        private static AzureMessage CreateAzureMessage(string queueName, CloudQueueMessage queueMessage)
+        {
+            switch (queueName) {
+                case "serverrequest":
+                    return KMeansJobData.FromMessage<KMeansJobData>(queueMessage);
+                case "serverresponse":
+                    return KMeansJobResult.FromMessage<KMeansJobResult>(queueMessage);
+                case "workerrequest":
+                    return KMeansTask.FromMessage<KMeansTask>(queueMessage);
+                case "workerresponse":
+                    return KMeansTaskResult.FromMessage<KMeansTaskResult>(queueMessage);
+                default:
+                    throw new InvalidOperationException();
+            }
         }
 
         public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 1000, int iterationLimit = 0)

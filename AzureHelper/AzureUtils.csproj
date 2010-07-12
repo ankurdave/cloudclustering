@@ -46,9 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AzureBlob.cs" />
     <Compile Include="AzureHelper.cs" />
-    <Compile Include="AzureMessageFactory.cs" />
     <Compile Include="AzureMessage.cs" />
     <Compile Include="Centroid.cs" />
     <Compile Include="ClusterPoint.cs" />
