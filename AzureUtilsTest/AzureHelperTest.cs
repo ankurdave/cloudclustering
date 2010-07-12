@@ -1,6 +1,8 @@
 ﻿using AzureUtils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using Microsoft.WindowsAzure.StorageClient;
+using System.Threading;
 
 namespace AzureUtilsTest
 {
@@ -70,18 +72,59 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void EnqueueWaitForMessageTest()
         {
+            CloudQueue queue = AzureHelper.StorageAccount.CreateCloudQueueClient().GetQueueReference(AzureHelper.ServerRequestQueue);
+            queue.CreateIfNotExist();
+            queue.Clear();
+
             KMeansJobData message = new KMeansJobData(Guid.Empty, 1, 2, 3);
             AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, message);
 
+            Thread.Sleep(2000);
+
             KMeansJobData responseMessage = null;
-            AzureHelper.WaitForMessage(AzureHelper.ServerRequestQueue, msg => ((KMeansJobData)msg).N == 3, msg =>
+            AzureHelper.WaitForMessage(AzureHelper.ServerRequestQueue, msg => true, msg =>
             {
                 responseMessage = (KMeansJobData)msg;
                 return true;
-            }, 100, 10);
+            }, 100, 100);
 
             Assert.AreEqual(message.JobID, responseMessage.JobID);
             Assert.AreEqual(message.K, responseMessage.K);
+        }
+
+        [TestMethod()]
+        public void SimpleEnqueueDequeueTest()
+        {
+            CloudQueue queue = AzureHelper.StorageAccount.CreateCloudQueueClient().GetQueueReference(AzureHelper.ServerRequestQueue);
+            queue.CreateIfNotExist();
+            queue.Clear();
+
+            Guid message = Guid.NewGuid();
+            queue.AddMessage(new CloudQueueMessage(message.ToByteArray()));
+            Thread.Sleep(2000);
+            Guid received = new Guid(queue.GetMessage().AsBytes);
+
+            Assert.AreEqual(message, received);
+        }
+
+        [TestMethod()]
+        public void AzureMessageEnqueueDequeueTest()
+        {
+            CloudQueue queue = AzureHelper.StorageAccount.CreateCloudQueueClient().GetQueueReference(AzureHelper.ServerRequestQueue);
+            queue.CreateIfNotExist();
+            queue.Clear();
+
+            AzureMessage message = new KMeansJobData(Guid.NewGuid(), 1, 2, 3);
+            queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
+            Thread.Sleep(2000);
+            AzureMessage received = KMeansJobData.FromMessage<KMeansJobData>(queue.GetMessage());
+
+            KMeansJobData messageCast = message as KMeansJobData,
+                receivedCast = received as KMeansJobData;
+            Assert.AreEqual(messageCast.JobID, receivedCast.JobID);
+            Assert.AreEqual(messageCast.K, receivedCast.K);
+            Assert.AreEqual(messageCast.M, receivedCast.M);
+            Assert.AreEqual(messageCast.N, receivedCast.N);
         }
     }
 }
