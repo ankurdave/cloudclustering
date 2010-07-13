@@ -18,6 +18,7 @@ namespace AzureUtils
         private int TotalNumPointsChanged { get; set; }
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
         private List<KMeansTask> tasks = new List<KMeansTask>();
+        private List<String> pointsBlockIDs = new List<string>();
         private KMeansJobData jobData;
         public int IterationCount { get; private set; }
 
@@ -118,6 +119,7 @@ namespace AzureUtils
                 if (pointPartitionStream.Length > 0)
                 {
                     points.PutBlock(Convert.ToBase64String(taskResult.TaskID.ToByteArray()), pointPartitionStream, null);
+                    pointsBlockIDs.Add(Convert.ToBase64String(taskResult.TaskID.ToByteArray()));
                 }
             }
 
@@ -186,7 +188,8 @@ namespace AzureUtils
             container.CreateIfNotExist();
             CloudBlockBlob points = container.GetBlockBlobReference(AzureHelper.PointsBlob);
 
-            points.PutBlockList(tasks.Where(task => task.Running).Select(task => Convert.ToBase64String(task.TaskData.TaskID.ToByteArray())));
+            points.PutBlockList(pointsBlockIDs);
+            pointsBlockIDs.Clear();
         }
 
         /// <summary>

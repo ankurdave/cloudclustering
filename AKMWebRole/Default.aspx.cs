@@ -32,7 +32,7 @@ namespace AKMWebRole
 
         private void FreezeUnfreezeUI(bool freeze = true)
         {
-            Run.Enabled = N.Enabled = K.Enabled = M.Enabled = !freeze;
+            Run.Enabled = N.Enabled = K.Enabled = M.Enabled = MaxIterationCount.Enabled = !freeze;
         }
 
         private void FreezeUI()
