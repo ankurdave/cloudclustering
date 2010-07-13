@@ -25,7 +25,7 @@ namespace AKMWebRole
             Status.Text = "Running...";
 
             jobID = Guid.NewGuid();
-            AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, new KMeansJobData(jobID, int.Parse(N.Text), int.Parse(K.Text), int.Parse(M.Text)));
+            AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, new KMeansJobData(jobID, int.Parse(N.Text), int.Parse(K.Text), int.Parse(M.Text), int.Parse(MaxIterationCount.Text)));
 
             WaitForResults();
         }

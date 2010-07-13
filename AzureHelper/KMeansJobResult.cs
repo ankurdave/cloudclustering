@@ -13,8 +13,8 @@ namespace AzureUtils
         public Uri Points { get; set; }
         public Uri Centroids { get; set; }
 
-        public KMeansJobResult(Guid jobID, int n, int k, int m, Uri points, Uri centroids)
-            : base(jobID, n, k, m)
+        public KMeansJobResult(Guid jobID, int n, int k, int m, int maxIterationCount, Uri points, Uri centroids)
+            : base(jobID, n, k, m, maxIterationCount)
         {
             this.Points = points;
             this.Centroids = centroids;

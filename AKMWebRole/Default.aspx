@@ -19,6 +19,9 @@
                 <br />
                 Machines (m):
                 <asp:TextBox ID="M" runat="server"></asp:TextBox>
+                <br />
+                Max iterations:
+                <asp:TextBox ID="MaxIterationCount" runat="server"></asp:TextBox>
             </p>
             
             <p><asp:Button ID="Run" runat="server" onclick="Run_Click" Text="Run K-Means" /></p>

@@ -3,6 +3,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using Microsoft.WindowsAzure.StorageClient;
 using System.Collections.Generic;
+using Microsoft.WindowsAzure;
+using System.IO;
 
 namespace AzureUtilsTest
 {
@@ -72,7 +74,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void InitializeStorageTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, 4, 6);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, 4, 6, 10);
             KMeansJob target = new KMeansJob(jobData);
             target.InitializeStorage();
             
@@ -153,7 +155,7 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void RecalculateCentroidsTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, 1, 1);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, 1, 1, 10);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
 
@@ -191,25 +193,126 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void CopyPointPartitionTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
-            int partitionNumber = 0; // TODO: Initialize to an appropriate value
-            int totalPartitions = 2; // TODO: Initialize to an appropriate value
+            int partitionNumber = 0;
+            int totalPartitions = 2;
             CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference("testcontainer");
             container.CreateIfNotExist();
-            string blobName = "testblob"; // TODO: Initialize to an appropriate value
+            string blobName = "testblob";
             CloudBlob partition;
             partition = target.CopyPointPartition(target.Points, partitionNumber, totalPartitions, container, blobName);
 
             using (BlobStream partitionStream = partition.OpenRead(),
                 pointsStream = target.Points.OpenRead())
             {
-                Assert.AreEqual(partitionStream.Length, ClusterPoint.Size * 2);
+                Assert.AreEqual(ClusterPoint.Size * 2, partitionStream.Length);
                 while (partitionStream.Position < partitionStream.Length)
                 {
-                    Assert.AreEqual(partitionStream.ReadByte(), pointsStream.ReadByte());
+                    Assert.AreEqual(pointsStream.ReadByte(), partitionStream.ReadByte());
                 }
+            }
+        }
+
+        /// <summary>
+        ///A test for ProcessWorkerResponse
+        ///</summary>
+        [TestMethod()]
+        public void ProcessWorkerResponseTest()
+        {
+            // TODO: Add test case where completed tasks already exist in KMeansJob, and make sure things work in that case. Basically, test multiple iterations.
+
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10);
+            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
+            target.InitializeStorage();
+
+            CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
+            CloudBlob pointPartition = target.CopyPointPartition(target.Points, 0, 2, container, "testblob");
+            
+            // Modify the first few bytes of the pointPartition blob, so we can verify that it got copied
+            byte[] arbitraryBytes = new byte[8];
+            new Random().NextBytes(arbitraryBytes);
+            using (BlobStream pointPartitionWriteStream = pointPartition.OpenWrite())
+            {
+                pointPartitionWriteStream.Write(arbitraryBytes, 0, arbitraryBytes.Length);
+            }
+
+            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), pointPartition.Uri, 0, target.Centroids.Uri);
+            target.tasks.Add(new KMeansTask(taskData));
+            KMeansTaskResult taskResult = new KMeansTaskResult(taskData);
+            taskResult.NumPointsChanged = 2;
+            Guid centroidID = Guid.NewGuid();
+            taskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData> {
+                { centroidID, new PointsProcessedData() {
+                        NumPointsProcessed = 2,
+                        PartialPointSum = new Point(1, 2)
+                    }
+                }
+            };
+            target.ProcessWorkerResponse(taskResult);
+            
+            // Verify that the first few bytes of Points are indeed full of arbitraryBytes
+            using (BlobStream pointsStream = target.Points.OpenRead())
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    Assert.AreEqual(arbitraryBytes[i], pointsStream.ReadByte());
+                }
+            }
+
+            // Verify that the data from taskResult got added
+            Assert.AreEqual(taskResult.NumPointsChanged, target.TotalNumPointsChanged);
+            Assert.AreEqual(taskResult.PointsProcessedDataByCentroid[centroidID].NumPointsProcessed,
+                target.totalPointsProcessedDataByCentroid[centroidID].NumPointsProcessed);
+            Assert.AreEqual(taskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.X,
+                target.totalPointsProcessedDataByCentroid[centroidID].PartialPointSum.X);
+            Assert.AreEqual(taskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.Y,
+                target.totalPointsProcessedDataByCentroid[centroidID].PartialPointSum.Y);
+        }
+
+        [TestMethod()]
+        public void BlockBlobTest()
+        {
+            // Set up the block blob
+            CloudStorageAccount storageAccount = CloudStorageAccount.DevelopmentStorageAccount;
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+            CloudBlobContainer container = blobClient.GetContainerReference("testcontainer");
+            container.CreateIfNotExist();
+            CloudBlockBlob blob = container.GetBlockBlobReference("testblob");
+
+            // Set up the data to write to a block
+            byte[] bytes = new byte[8]; // Just a bunch of zeros
+            MemoryStream stream = new MemoryStream(bytes);
+
+            // Put the block
+            List<string> blocks = new List<string> {
+                Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            };
+            
+            blob.PutBlock(blocks[0], stream, null);
+
+            // Commit the blob
+            blob.PutBlockList(blocks);
+        }
+
+        [TestMethod()]
+        public void PlainBlobTest()
+        {
+            // Set up the blob
+            CloudStorageAccount storageAccount = CloudStorageAccount.DevelopmentStorageAccount;
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+            CloudBlobContainer container = blobClient.GetContainerReference("testcontainer");
+            container.CreateIfNotExist();
+            CloudBlob blob = container.GetBlobReference("testblob");
+
+            // Set up the data to write to a block
+            byte[] bytes = new byte[8]; // Just a bunch of zeros
+
+            // Put the blob
+            using (BlobStream blobStream = blob.OpenWrite()) {
+                blobStream.Write(bytes, 0, bytes.Length);
             }
         }
     }

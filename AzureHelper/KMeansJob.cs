@@ -19,6 +19,7 @@ namespace AzureUtils
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
         private List<KMeansTask> tasks = new List<KMeansTask>();
         private KMeansJobData jobData;
+        private int iterationCount = 0;
 
         public KMeansJob(KMeansJobData jobData) {
             this.jobData = jobData;
@@ -104,6 +105,7 @@ namespace AzureUtils
                 return false;
 
             KMeansTask task = TaskResultWithTaskID(taskResult.TaskID);
+            task.Running = false; // The task has returned a response, which means that it has stopped running
 
             // Copy the worker's point partition into a block
             CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(jobData.JobID.ToString());
@@ -114,16 +116,15 @@ namespace AzureUtils
             {
                 if (pointPartitionStream.Length > 0)
                 {
-                    points.PutBlock(taskResult.TaskID.ToString(), pointPartitionStream, null);
+                    points.PutBlock(Convert.ToBase64String(taskResult.TaskID.ToByteArray()), pointPartitionStream, null);
                 }
             }
 
             // Copy out and integrate the data from the worker response
-            CopyBackPointPartition(Points, taskResult.PointPartitionNumber, jobData.M, AzureHelper.GetBlob(taskResult.Points));
             AddDataFromTaskResult(taskResult); // TODO: Debug this to make sure that it actually works
 
             // If this is the last worker to return, this iteration is done and we should start the next one
-            if (NoTaskIDsLeft())
+            if (NoMoreRunningTasks())
             {
                 NextIteration();
             }
@@ -160,7 +161,9 @@ namespace AzureUtils
 
             CommitPointsBlob();
 
-            if (NumPointsChangedAboveThreshold())
+            iterationCount++;
+
+            if (NumPointsChangedAboveThreshold() && !MaxIterationCountExceeded())
             {
                 RecalculateCentroids();
                 EnqueueTasks();
@@ -171,13 +174,18 @@ namespace AzureUtils
             }
         }
 
+        private bool MaxIterationCountExceeded()
+        {
+            return iterationCount >= jobData.MaxIterationCount && jobData.MaxIterationCount != 0;
+        }
+
         private void CommitPointsBlob()
         {
             CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(jobData.JobID.ToString());
             container.CreateIfNotExist();
             CloudBlockBlob points = container.GetBlockBlobReference(AzureHelper.PointsBlob);
 
-            points.PutBlockList(tasks.Select(task => task.TaskData.TaskID.ToString()));
+            points.PutBlockList(tasks.Where(task => task.Running).Select(task => Convert.ToBase64String(task.TaskData.TaskID.ToByteArray())));
         }
 
         /// <summary>
@@ -264,9 +272,9 @@ namespace AzureUtils
             totalPointsProcessedDataByCentroid[centroidID] += data;
         }
 
-        private bool NoTaskIDsLeft()
+        private bool NoMoreRunningTasks()
         {
-            return tasks.Count == 0;
+            return tasks.Count(task => task.Running) == 0;
         }
 
         private bool NumPointsChangedAboveThreshold()
@@ -285,7 +293,7 @@ namespace AzureUtils
                     Centroid c = Centroid.FromByteArray(centroidBytes);
 
                     Point newCentroidPoint;
-                    if (totalPointsProcessedDataByCentroid[c.ID] != null)
+                    if (totalPointsProcessedDataByCentroid.ContainsKey(c.ID))
                     {
                         newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
                          / (float)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
