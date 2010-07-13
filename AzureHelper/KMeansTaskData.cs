@@ -7,33 +7,37 @@ using Microsoft.WindowsAzure.StorageClient;
 namespace AzureUtils
 {
     [Serializable]
-    public class KMeansTask : KMeansJobData
+    public class KMeansTaskData : KMeansJobData
     {
         public Guid TaskID { get; set; }
         public Uri Points { get; set; }
+        public int PointPartitionNumber { get; set; }
         public Uri Centroids { get; set; }
 
-        public KMeansTask(Guid jobID, Guid taskID, int n, int k, int m, Uri points, Uri centroids)
+        public KMeansTaskData(Guid jobID, Guid taskID, int n, int k, int m, Uri points, int pointPartitionNumber, Uri centroids)
             : base(jobID, n, k, m)
         {
             this.TaskID = taskID;
             this.Points = points;
+            this.PointPartitionNumber = pointPartitionNumber;
             this.Centroids = centroids;
         }
 
-        public KMeansTask(KMeansJobData job, Guid taskID, Uri points, Uri centroids)
+        public KMeansTaskData(KMeansJobData job, Guid taskID, Uri points, int pointPartitionNumber, Uri centroids)
             : base(job)
         {
             this.TaskID = taskID;
             this.Points = points;
+            this.PointPartitionNumber = pointPartitionNumber;
             this.Centroids = centroids;
         }
 
-        public KMeansTask(KMeansTask task)
+        public KMeansTaskData(KMeansTaskData task)
             : base(task)
         {
             this.TaskID = task.TaskID;
             this.Points = task.Points;
+            this.PointPartitionNumber = task.PointPartitionNumber;
             this.Centroids = task.Centroids;
         }
     }

@@ -54,6 +54,10 @@ namespace AKMServerRole
             KMeansTaskResult taskResult = message as KMeansTaskResult;
             taskResult.RestorePointsProcessedDataByCentroid();
 
+            // Make sure the job belongs to this server
+            if (!jobs.ContainsKey(taskResult.JobID))
+                return false;
+
             System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessWorkerResponse(jobID={0}, taskID={1})", taskResult.JobID, taskResult.TaskID);
 
             return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult);

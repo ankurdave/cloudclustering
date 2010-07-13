@@ -53,6 +53,7 @@
     <Compile Include="ICloudBlob.cs" />
     <Compile Include="KMeansJob.cs" />
     <Compile Include="KMeansTask.cs" />
+    <Compile Include="KMeansTaskData.cs" />
     <Compile Include="KMeansTaskProcessor.cs" />
     <Compile Include="Point.cs" />
     <Compile Include="KMeansTaskResult.cs" />

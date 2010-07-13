@@ -129,6 +129,10 @@ namespace AzureUtilsTest
             Assert.IsTrue(p.X >= -50 && p.X < 50 && IsInteger(p.X));
             Assert.IsTrue(p.Y >= -50 && p.Y < 50 && IsInteger(p.Y));
             Assert.AreEqual(p.CentroidID, Guid.Empty);
+
+            // Verify that the blobs are the correct length
+            Assert.AreEqual(points.Properties.Length, ClusterPoint.Size * jobData.N);
+            Assert.AreEqual(centroids.Properties.Length, Centroid.Size * jobData.K);
         }
 
         private bool IsInteger(float x)
@@ -178,6 +182,35 @@ namespace AzureUtilsTest
             Assert.AreEqual(cNew.ID, cOriginal.ID);
             Assert.AreEqual(cNew.X, 1);
             Assert.AreEqual(cNew.Y, 2);
+        }
+
+        /// <summary>
+        ///A test for CopyPointPartition
+        ///</summary>
+        [TestMethod()]
+        [DeploymentItem("AzureHelper.dll")]
+        public void CopyPointPartitionTest()
+        {
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2);
+            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
+            target.InitializeStorage();
+            int partitionNumber = 0; // TODO: Initialize to an appropriate value
+            int totalPartitions = 2; // TODO: Initialize to an appropriate value
+            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference("testcontainer");
+            container.CreateIfNotExist();
+            string blobName = "testblob"; // TODO: Initialize to an appropriate value
+            CloudBlob partition;
+            partition = target.CopyPointPartition(target.Points, partitionNumber, totalPartitions, container, blobName);
+
+            using (BlobStream partitionStream = partition.OpenRead(),
+                pointsStream = target.Points.OpenRead())
+            {
+                Assert.AreEqual(partitionStream.Length, ClusterPoint.Size * 2);
+                while (partitionStream.Position < partitionStream.Length)
+                {
+                    Assert.AreEqual(partitionStream.ReadByte(), pointsStream.ReadByte());
+                }
+            }
         }
     }
 }

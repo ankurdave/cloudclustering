@@ -8,12 +8,12 @@ namespace AzureUtils
 {
     public class KMeansTaskProcessor
     {
-        private KMeansTask task;
+        private KMeansTaskData task;
         private List<Centroid> centroids;
 
         public KMeansTaskResult TaskResult { get; private set; }
 
-        public KMeansTaskProcessor(KMeansTask task)
+        public KMeansTaskProcessor(KMeansTaskData task)
         {
             this.task = task;
             

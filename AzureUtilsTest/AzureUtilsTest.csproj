@@ -62,6 +62,7 @@
     <Compile Include="ClusterPointTest.cs" />
     <Compile Include="KMeansJobTest.cs" />
     <Compile Include="KMeansTaskProcessorTest.cs" />
+    <Compile Include="KMeansTaskResultTest.cs" />
     <Compile Include="PointsProcessedDataTest.cs" />
     <Compile Include="PointTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

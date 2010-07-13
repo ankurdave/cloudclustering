@@ -25,11 +25,11 @@ namespace AKMWorkerRole
 
         private bool ProcessNewTask(AzureMessage message)
         {
-            KMeansTask task = message as KMeansTask;
+            KMeansTaskData task = message as KMeansTaskData;
             
             System.Diagnostics.Trace.TraceInformation("[WorkerRole] ProcessNewTask(jobID={1}, taskID={0})", task.TaskID, task.JobID);
 
-            // Process the task
+            // Process the taskData
             KMeansTaskProcessor taskProcessor = new KMeansTaskProcessor(task);
             taskProcessor.Run();
 

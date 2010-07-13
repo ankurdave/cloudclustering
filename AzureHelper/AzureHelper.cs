@@ -54,7 +54,7 @@ namespace AzureUtils
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
             queue.CreateIfNotExist();
 
-            CloudQueueMessage queueMessage = queue.GetMessage();
+            CloudQueueMessage queueMessage = queue.PeekMessage();
 
             if (queueMessage == null)
                 return false;
@@ -63,6 +63,9 @@ namespace AzureUtils
 
             if (!condition.Invoke(message))
                 return false;
+
+            // FIXME: Potential race condition where a message is enqueued between checking the condition and invoking the action
+            queueMessage = queue.GetMessage();
 
             if (!action.Invoke(message))
                 return false;
@@ -80,7 +83,7 @@ namespace AzureUtils
                 case ServerResponseQueue:
                     return KMeansJobResult.FromMessage<KMeansJobResult>(queueMessage);
                 case WorkerRequestQueue:
-                    return KMeansTask.FromMessage<KMeansTask>(queueMessage);
+                    return KMeansTaskData.FromMessage<KMeansTaskData>(queueMessage);
                 case WorkerResponseQueue:
                     return KMeansTaskResult.FromMessage<KMeansTaskResult>(queueMessage);
                 default:

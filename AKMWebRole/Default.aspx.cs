@@ -62,14 +62,18 @@ namespace AKMWebRole
         {
             Status.Text += ".";
 
+            System.Diagnostics.Trace.TraceInformation("[WebRole] UpdateTimer_Tick(), JobID={0}", jobID);
+
             AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
-                message => ((KMeansJobResult)message).JobID == jobID,
+                message => true /*((KMeansJobResult)message).JobID == jobID*/,
                 ShowResults);
         }
 
         private bool ShowResults(AzureMessage message)
         {
             KMeansJobResult jobResult = message as KMeansJobResult;
+
+            System.Diagnostics.Trace.TraceInformation("[WebRole] ShowResults(), JobID={0}", jobResult.JobID);
 
             StopWaitingForResults();
             Status.Text = "Done!";

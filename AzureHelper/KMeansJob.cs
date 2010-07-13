@@ -17,7 +17,7 @@ namespace AzureUtils
         private CloudBlob Centroids { get; set; }
         private int TotalNumPointsChanged { get; set; }
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
-        private HashSet<Guid> taskIDs = new HashSet<Guid>();
+        private List<KMeansTask> tasks = new List<KMeansTask>();
         private KMeansJobData jobData;
 
         public KMeansJob(KMeansJobData jobData) {
@@ -32,7 +32,7 @@ namespace AzureUtils
             // Set up the storage client and the container
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
-            container.Create();
+            container.CreateIfNotExist();
             
             Random random = new Random();
 
@@ -78,37 +78,49 @@ namespace AzureUtils
                 Guid taskID = Guid.NewGuid();
                 CloudBlob pointPartition = CopyPointPartition(Points, i, jobData.M, container, taskID.ToString());
 
-                KMeansTask task = new KMeansTask(
+                KMeansTaskData taskData = new KMeansTaskData(
                     jobData,
                     taskID,
                     pointPartition.Uri,
+                    i,
                     Centroids.Uri);
 
-                taskIDs.Add(taskID);
+                tasks.Add(new KMeansTask(taskData));
 
-                AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, task);
+                AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData);
             }
         }
 
         /// <summary>
-        /// Handles a worker's TaskResult from a running k-means jobData. Adds up the partial sums from the TaskResult.
+        /// Handles a worker's TaskResult from a running k-means job. Adds up the partial sums from the TaskResult.
         /// </summary>
         /// <param name="message"></param>
-        /// <returns>False if the given task result has already been counted, true otherwise.</returns>
+        /// <returns>False if the given taskData result has already been counted, true otherwise.</returns>
         public bool ProcessWorkerResponse(KMeansTaskResult taskResult)
         {
-            // Make sure we're actually still waiting for a result for this task
+            // Make sure we're actually still waiting for a result for this taskData
             // If not, this might be a duplicate queue message
-            if (!taskIDs.Contains(taskResult.TaskID))
-            {
-                taskIDs.Remove(taskResult.TaskID);
+            if (!TaskResultMatchesRunningTask(taskResult))
                 return false;
+
+            KMeansTask task = TaskResultWithTaskID(taskResult.TaskID);
+
+            // Copy the worker's point partition into a block
+            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(jobData.JobID.ToString());
+            container.CreateIfNotExist();
+            CloudBlockBlob points = container.GetBlockBlobReference(AzureHelper.PointsBlob);
+            CloudBlob pointPartitionBlob = AzureHelper.GetBlob(taskResult.Points);
+            using (BlobStream pointPartitionStream = pointPartitionBlob.OpenRead())
+            {
+                if (pointPartitionStream.Length > 0)
+                {
+                    points.PutBlock(taskResult.TaskID.ToString(), pointPartitionStream, null);
+                }
             }
 
-            // Add up the partial sums
-            AddDataFromTaskResult(taskResult);
-
-            taskIDs.Remove(taskResult.TaskID);
+            // Copy out and integrate the data from the worker response
+            CopyBackPointPartition(Points, taskResult.PointPartitionNumber, jobData.M, AzureHelper.GetBlob(taskResult.Points));
+            AddDataFromTaskResult(taskResult); // TODO: Debug this to make sure that it actually works
 
             // If this is the last worker to return, this iteration is done and we should start the next one
             if (NoTaskIDsLeft())
@@ -119,11 +131,35 @@ namespace AzureUtils
             return true;
         }
 
+        private KMeansTask TaskResultWithTaskID(Guid guid)
+        {
+            KMeansTask foundTask = null;
+            foreach (KMeansTask task in tasks)
+            {
+                if (task.TaskData.TaskID == guid && task.Running)
+                {
+                    foundTask = task;
+                    break;
+                }
+            }
+            return foundTask;
+        }
+
+        private bool TaskResultMatchesRunningTask(KMeansTaskResult taskResult)
+        {
+            KMeansTask task = TaskResultWithTaskID(taskResult.TaskID);
+            return task != null && task.Running;
+        }
+
         /// <summary>
         /// Checks whether to move into the next iteration, and performs the appropriate actions to make it happen.
         /// </summary>
         private void NextIteration()
         {
+            System.Diagnostics.Trace.TraceInformation("[ServerRole] NextIteration() JobID={0}", jobData.JobID);
+
+            CommitPointsBlob();
+
             if (NumPointsChangedAboveThreshold())
             {
                 RecalculateCentroids();
@@ -133,6 +169,15 @@ namespace AzureUtils
             {
                 ReturnResults();
             }
+        }
+
+        private void CommitPointsBlob()
+        {
+            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(jobData.JobID.ToString());
+            container.CreateIfNotExist();
+            CloudBlockBlob points = container.GetBlockBlobReference(AzureHelper.PointsBlob);
+
+            points.PutBlockList(tasks.Select(task => task.TaskData.TaskID.ToString()));
         }
 
         /// <summary>
@@ -150,8 +195,8 @@ namespace AzureUtils
             int actualLength;
             using (BlobStream pointsStream = points.OpenRead())
             {
-                long numPoints = pointsStream.Length / ClusterPoint.Size;
-                long partitionLength = (long)Math.Ceiling((float)numPoints / totalPartitions);
+                long numPoints = NumClusterPointsInBlob(points);
+                long partitionLength = PartitionLength(numPoints, totalPartitions);
                 long startByte = partitionNumber * partitionLength;
 
                 // Read it into partition
@@ -168,6 +213,32 @@ namespace AzureUtils
             }
 
             return newBlob;
+        }
+
+        private void CopyBackPointPartition(CloudBlob points, int partitionNumber, int totalPartitions, CloudBlob partition)
+        {
+            using (BlobStream partitionStream = partition.OpenRead(),
+                pointsStream = points.OpenWrite())
+            {
+                // Calculate where in points to start copying into
+                long numPoints = NumClusterPointsInBlob(points);
+                long partitionLength = PartitionLength(numPoints, totalPartitions);
+                long startByte = partitionNumber * partitionLength;
+
+                // Copy partition into that portion of points
+                pointsStream.Position = startByte;
+                partitionStream.CopyTo(pointsStream);
+            }
+        }
+
+        private static long PartitionLength(long numPoints, int numPartitions)
+        {
+            return (long)Math.Ceiling((float)numPoints / numPartitions) * ClusterPoint.Size;
+        }
+
+        private long NumClusterPointsInBlob(CloudBlob points)
+        {
+            return points.Properties.Length / ClusterPoint.Size;
         }
 
         /// <summary>
@@ -195,7 +266,7 @@ namespace AzureUtils
 
         private bool NoTaskIDsLeft()
         {
-            return taskIDs.Count == 0;
+            return tasks.Count == 0;
         }
 
         private bool NumPointsChangedAboveThreshold()
@@ -235,6 +306,8 @@ namespace AzureUtils
 
         private void ReturnResults()
         {
+            System.Diagnostics.Trace.TraceInformation("[ServerRole] ReturnResults() JobID={0}", jobData.JobID);
+
             KMeansJobResult jobResult = new KMeansJobResult(jobData, Points.Uri, Centroids.Uri);
             AzureHelper.EnqueueMessage(AzureHelper.ServerResponseQueue, jobResult);
             // TODO: Delete this KMeansJob from the list of jobs in ServerRole

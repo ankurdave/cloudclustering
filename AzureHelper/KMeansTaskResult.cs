@@ -6,7 +6,7 @@ using System.Text;
 namespace AzureUtils
 {
     [Serializable]
-    public class KMeansTaskResult : KMeansTask
+    public class KMeansTaskResult : KMeansTaskData
     {
         public int NumPointsChanged { get; set; }
 
@@ -16,7 +16,7 @@ namespace AzureUtils
 
         public List<KeyValuePair<Guid, PointsProcessedData>> PointsProcessedDataByCentroidList { get; private set; }
 
-        public KMeansTaskResult(KMeansTask task)
+        public KMeansTaskResult(KMeansTaskData task)
             : base(task)
         {
             NumPointsChanged = 0;

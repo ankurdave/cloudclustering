@@ -8,11 +8,11 @@ namespace AzureUtilsTest
     
     
     /// <summary>
-    ///This is a test class for KMeansTaskProcessorTest and is intended
-    ///to contain all KMeansTaskProcessorTest Unit Tests
+    ///This is a test class for KMeansTaskResultTest and is intended
+    ///to contain all KMeansTaskResultTest Unit Tests
     ///</summary>
     [TestClass()]
-    public class KMeansTaskProcessorTest
+    public class KMeansTaskResultTest
     {
 
 
@@ -66,46 +66,29 @@ namespace AzureUtilsTest
 
 
         /// <summary>
-        ///A test for AssignClusterPointToNearestCentroid
+        ///A test for SavePointsProcessedDataByCentroid
         ///</summary>
         [TestMethod()]
-        [DeploymentItem("AzureHelper.dll")]
-        public void AssignClusterPointToNearestCentroidTest()
+        public void SavePointsProcessedDataByCentroidTest()
         {
             KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, 2, 3, null, 0, null);
-            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(task);
-            
-            target.centroids = new List<Centroid>();
-            target.centroids.Add(new Centroid
+            KMeansTaskResult target = new KMeansTaskResult(task);
+            target.PointsProcessedDataByCentroid[Guid.NewGuid()] = new PointsProcessedData()
             {
-                ID = Guid.NewGuid(),
-                X = 0.0F,
-                Y = -1.0F
-            });
-            target.centroids.Add(new Centroid
+                NumPointsProcessed = 100,
+                PartialPointSum = new Point(10, -10)
+            };
+            target.PointsProcessedDataByCentroid[Guid.NewGuid()] = new PointsProcessedData()
             {
-                ID = Guid.NewGuid(),
-                X = 10.0F,
-                Y = 10.0F
-            });
+                NumPointsProcessed = 100,
+                PartialPointSum = new Point(10, -10)
+            };
+            target.SavePointsProcessedDataByCentroid();
 
-            ClusterPoint clusterPoint = new ClusterPoint
+            foreach (KeyValuePair<Guid, PointsProcessedData> pair in target.PointsProcessedDataByCentroid)
             {
-                CentroidID = Guid.Empty,
-                X = 1.0F,
-                Y = 2.0F
-            };
-            
-            ClusterPoint expected = new ClusterPoint
-            {
-                CentroidID = target.centroids[0].ID,
-                X = 1.0F,
-                Y = 2.0F
-            };
-            ClusterPoint actual;
-            actual = target.AssignClusterPointToNearestCentroid(clusterPoint);
-            
-            Assert.AreEqual(expected.CentroidID, actual.CentroidID);
+                Assert.IsTrue(target.PointsProcessedDataByCentroidList.Contains(pair));
+            }
         }
     }
 }
