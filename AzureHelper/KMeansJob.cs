@@ -19,10 +19,11 @@ namespace AzureUtils
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
         private List<KMeansTask> tasks = new List<KMeansTask>();
         private KMeansJobData jobData;
-        private int iterationCount = 0;
+        public int IterationCount { get; private set; }
 
         public KMeansJob(KMeansJobData jobData) {
             this.jobData = jobData;
+            this.IterationCount = 0;
         }
 
         /// <summary>
@@ -161,7 +162,7 @@ namespace AzureUtils
 
             CommitPointsBlob();
 
-            iterationCount++;
+            IterationCount++;
 
             if (NumPointsChangedAboveThreshold() && !MaxIterationCountExceeded())
             {
@@ -176,7 +177,7 @@ namespace AzureUtils
 
         private bool MaxIterationCountExceeded()
         {
-            return iterationCount >= jobData.MaxIterationCount && jobData.MaxIterationCount != 0;
+            return IterationCount >= jobData.MaxIterationCount && jobData.MaxIterationCount != 0;
         }
 
         private void CommitPointsBlob()

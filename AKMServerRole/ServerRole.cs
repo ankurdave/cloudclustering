@@ -58,7 +58,7 @@ namespace AKMServerRole
             if (!jobs.ContainsKey(taskResult.JobID))
                 return false;
 
-            System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessWorkerResponse(jobID={0}, taskID={1})", taskResult.JobID, taskResult.TaskID);
+            System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessWorkerResponse(jobID={0}, taskID={1}, iterationCount={2})", taskResult.JobID, taskResult.TaskID, jobs[taskResult.TaskID].IterationCount);
 
             return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult);
         }

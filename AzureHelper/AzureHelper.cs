@@ -54,7 +54,7 @@ namespace AzureUtils
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
             queue.CreateIfNotExist();
 
-            CloudQueueMessage queueMessage = queue.PeekMessage();
+            CloudQueueMessage queueMessage = queue.GetMessage();
 
             if (queueMessage == null)
                 return false;
@@ -63,9 +63,6 @@ namespace AzureUtils
 
             if (!condition.Invoke(message))
                 return false;
-
-            // FIXME: Potential race condition where a message is enqueued between checking the condition and invoking the action
-            queueMessage = queue.GetMessage();
 
             if (!action.Invoke(message))
                 return false;
