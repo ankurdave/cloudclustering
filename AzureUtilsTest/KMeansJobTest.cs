@@ -5,6 +5,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using System.Collections.Generic;
 using Microsoft.WindowsAzure;
 using System.IO;
+using System.Linq;
 
 namespace AzureUtilsTest
 {
@@ -314,6 +315,66 @@ namespace AzureUtilsTest
             using (BlobStream blobStream = blob.OpenWrite()) {
                 blobStream.Write(bytes, 0, bytes.Length);
             }
+        }
+
+        [TestMethod()]
+        public void MultiIterationJobTest()
+        {
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 2);
+            KMeansJob_Accessor job = new KMeansJob_Accessor(jobData);
+            
+            // First iteration
+            job.InitializeStorage();
+            job.EnqueueTasks();
+
+            for (int i = 0; i < jobData.MaxIterationCount; i++)
+            {
+                //List<KMeansTaskData> taskDataList = GetKMeansTasksFromWorkerRequestQueue(jobData.M);
+                CheckWorkerRequests(job,
+                    (from task in job.tasks
+                    where task.Running
+                    select task.TaskData),
+                    jobData.M, job.Points);
+
+                // Create the worker results and send them to the job
+                List<KMeansTaskResult> results = new List<KMeansTaskResult>();
+                foreach (var task in job.tasks)
+                {
+                    var taskResult = new KMeansTaskResult(task.TaskData);
+                    taskResult.NumPointsChanged = 1;
+                    results.Add(taskResult);
+                }
+
+                foreach (var result in results)
+                {
+                    job.ProcessWorkerResponse(result);
+                }
+            }
+        }
+
+        private void CheckWorkerRequests(KMeansJob_Accessor job, IEnumerable<KMeansTaskData> taskDataList, int expectedNumRequests, CloudBlob pointsBlob)
+        {
+            // Make sure there are enough taskDatas in the list
+            Assert.AreEqual(expectedNumRequests, taskDataList.Count());
+            Assert.IsTrue(taskDataList.Where(element => element == null).Count() == 0);
+
+            // Make sure the lengths of all the point partition blobs add up to the length of the points blob
+            Assert.AreEqual(pointsBlob.Properties.Length,
+                taskDataList.Sum(element => AzureHelper.GetBlob(element.Points).Properties.Length));
+        }
+
+        private static List<KMeansTaskData> GetKMeansTasksFromWorkerRequestQueue(int numQueueMessages)
+        {
+            List<KMeansTaskData> taskDataList = new List<KMeansTaskData>();
+            for (int i = 0; i < numQueueMessages; i++)
+            {
+                AzureHelper.WaitForMessage(AzureHelper.WorkerRequestQueue, message => true, message =>
+                {
+                    taskDataList.Add((KMeansTaskData)message);
+                    return true;
+                }, 100, 100);
+            }
+            return taskDataList;
         }
     }
 }

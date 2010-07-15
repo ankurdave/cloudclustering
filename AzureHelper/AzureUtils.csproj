@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="AzureHelper.cs" />
     <Compile Include="AzureMessage.cs" />
+    <Compile Include="BlobPath.cs" />
     <Compile Include="Centroid.cs" />
     <Compile Include="ClusterPoint.cs" />
     <Compile Include="ICloudBlob.cs" />

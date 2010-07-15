@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using Microsoft.WindowsAzure.StorageClient;
 using System.Threading;
+using Microsoft.WindowsAzure;
 
 namespace AzureUtilsTest
 {
@@ -125,6 +126,23 @@ namespace AzureUtilsTest
             Assert.AreEqual(messageCast.K, receivedCast.K);
             Assert.AreEqual(messageCast.M, receivedCast.M);
             Assert.AreEqual(messageCast.N, receivedCast.N);
+        }
+
+        [TestMethod()]
+        public void GetBlobTest()
+        {
+            string containerName = "foo";
+            string blobName = "bar";
+            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(containerName);
+            container.CreateIfNotExist();
+            CloudBlob blob = container.GetBlobReference(blobName);
+            using (BlobStream stream = blob.OpenWrite())
+            {
+                byte[] bytes = new System.Text.UTF8Encoding().GetBytes("hello world");
+                stream.Write(bytes, 0, bytes.Length);
+            }
+
+            Assert.AreEqual(blob.Properties.Length, AzureHelper.GetBlob(blob.Uri).Properties.Length);
         }
     }
 }

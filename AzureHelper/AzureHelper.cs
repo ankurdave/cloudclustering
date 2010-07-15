@@ -105,7 +105,9 @@ namespace AzureUtils
 
         public static CloudBlob GetBlob(Uri uri)
         {
-            return new CloudBlob(uri.AbsoluteUri, StorageAccount.Credentials);
+            CloudBlob blob = StorageAccount.CreateCloudBlobClient().GetBlobReference(uri.ToString());
+            blob.FetchAttributes();
+            return blob;
         }
     }
 }

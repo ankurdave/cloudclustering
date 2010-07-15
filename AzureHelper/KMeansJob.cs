@@ -13,7 +13,7 @@ namespace AzureUtils
         private const int PointRange = 50;
         private const int NumPointsChangedThreshold = 0;
 
-        private CloudBlob Points { get; set; }
+        private CloudBlockBlob Points { get; set; }
         private CloudBlob Centroids { get; set; }
         private int TotalNumPointsChanged { get; set; }
         private Dictionary<Guid, PointsProcessedData> totalPointsProcessedDataByCentroid = new Dictionary<Guid,PointsProcessedData>();
@@ -40,7 +40,7 @@ namespace AzureUtils
             Random random = new Random();
 
             // Initialize the points blob with N random ClusterPoints
-            Points = container.GetBlobReference(AzureHelper.PointsBlob);
+            Points = container.GetBlockBlobReference(AzureHelper.PointsBlob);
             using (Stream pointsStream = Points.OpenWrite())
             {
                 for (int i = 0; i < jobData.N; i++)
@@ -110,15 +110,12 @@ namespace AzureUtils
             task.Running = false; // The task has returned a response, which means that it has stopped running
 
             // Copy the worker's point partition into a block
-            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(jobData.JobID.ToString());
-            container.CreateIfNotExist();
-            CloudBlockBlob points = container.GetBlockBlobReference(AzureHelper.PointsBlob);
             CloudBlob pointPartitionBlob = AzureHelper.GetBlob(taskResult.Points);
             using (BlobStream pointPartitionStream = pointPartitionBlob.OpenRead())
             {
                 if (pointPartitionStream.Length > 0)
                 {
-                    points.PutBlock(Convert.ToBase64String(taskResult.TaskID.ToByteArray()), pointPartitionStream, null);
+                    Points.PutBlock(Convert.ToBase64String(taskResult.TaskID.ToByteArray()), pointPartitionStream, null);
                     pointsBlockIDs.Add(Convert.ToBase64String(taskResult.TaskID.ToByteArray()));
                 }
             }
@@ -184,11 +181,8 @@ namespace AzureUtils
 
         private void CommitPointsBlob()
         {
-            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(jobData.JobID.ToString());
-            container.CreateIfNotExist();
-            CloudBlockBlob points = container.GetBlockBlobReference(AzureHelper.PointsBlob);
-
-            points.PutBlockList(pointsBlockIDs);
+            Points.PutBlockList(pointsBlockIDs);
+            Points.FetchAttributes(); // Refresh the attributes after PutBlockList has cleared them, so that they can be relied on for later calculations
             pointsBlockIDs.Clear();
         }
 
