@@ -32,6 +32,13 @@
 
             <p><strong>Centroids:</strong> <asp:Label ID="Centroids" runat="server" Text=""></asp:Label></p>
 
+            
+
+            <asp:Panel ID="Visualization" runat="server" CssClass="visualization">
+            </asp:Panel>
+
+            
+
             <asp:Timer ID="UpdateTimer" runat="server" Enabled="False" Interval="2000" 
                 ontick="UpdateTimer_Tick">
             </asp:Timer>

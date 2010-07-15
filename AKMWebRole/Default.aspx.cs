@@ -88,6 +88,14 @@ namespace AKMWebRole
                     pointsStream.Read(bytes, 0, bytes.Length);
                     ClusterPoint p = ClusterPoint.FromByteArray(bytes);
                     pointsString.AppendFormat("({0},{1},{2}), ", p.X, p.Y, p.CentroidID);
+
+                    Label point = new Label();
+                    point.CssClass = "point";
+                    point.Style.Add(HtmlTextWriterStyle.Top, PointUnitsToPixels(p.Y));
+                    point.Style.Add(HtmlTextWriterStyle.Left, PointUnitsToPixels(p.X));
+                    point.Style.Add(HtmlTextWriterStyle.BackgroundColor, GuidToColor(p.CentroidID));
+                    Visualization.Controls.Add(point);
+
                 }
                 Points.Text = pointsString.ToString();
             }
@@ -102,12 +110,31 @@ namespace AKMWebRole
                     centroidsStream.Read(bytes, 0, bytes.Length);
                     Centroid p = Centroid.FromByteArray(bytes);
                     centroidsString.AppendFormat("({0},{1},{2}), ", p.ID, p.X, p.Y);
+
+                    Label centroid = new Label();
+                    centroid.CssClass = "centroid";
+                    centroid.Style.Add(HtmlTextWriterStyle.Top, PointUnitsToPixels(p.Y));
+                    centroid.Style.Add(HtmlTextWriterStyle.Left, PointUnitsToPixels(p.X));
+                    centroid.Style.Add(HtmlTextWriterStyle.BackgroundColor, GuidToColor(p.ID));
+                    Visualization.Controls.Add(centroid);
                 }
                 Centroids.Text = centroidsString.ToString();
             }
 
             UnfreezeUI();
             return true;
+        }
+
+        private string GuidToColor(Guid guid)
+        {
+            // Just take the first 6 hex digits of the Guid
+            return "#" + guid.ToString("N").Substring(0, 6);
+        }
+
+        private string PointUnitsToPixels(float pointUnits)
+        {
+            int pixels = (int)((pointUnits + 50) * 5); // scale from (-50,50) to (0,500)
+            return pixels.ToString() + "px";
         }
     }
 }
