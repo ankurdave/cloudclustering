@@ -299,6 +299,7 @@ div.accountInfo
     width: 500px;
     height: 500px;
     position: relative;
+    border: 1px solid gray;
 }
 
 .point, .centroid

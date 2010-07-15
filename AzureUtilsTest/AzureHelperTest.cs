@@ -77,7 +77,7 @@ namespace AzureUtilsTest
             queue.CreateIfNotExist();
             queue.Clear();
 
-            KMeansJobData message = new KMeansJobData(Guid.Empty, 1, 2, 3, 10);
+            KMeansJobData message = new KMeansJobData(Guid.Empty, 1, 2, 3, 10, DateTime.Now);
             AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, message);
 
             Thread.Sleep(2000);
@@ -115,7 +115,7 @@ namespace AzureUtilsTest
             queue.CreateIfNotExist();
             queue.Clear();
 
-            AzureMessage message = new KMeansJobData(Guid.NewGuid(), 1, 2, 3, 10);
+            AzureMessage message = new KMeansJobData(Guid.NewGuid(), 1, 2, 3, 10, DateTime.Now);
             queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
             Thread.Sleep(2000);
             AzureMessage received = KMeansJobData.FromMessage<KMeansJobData>(queue.GetMessage());

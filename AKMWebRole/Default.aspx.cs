@@ -12,8 +12,6 @@ namespace AKMWebRole
 {
     public partial class _Default : System.Web.UI.Page
     {
-        private Guid jobID;
-
         protected void Page_Load(object sender, EventArgs e)
         {
 
@@ -22,12 +20,23 @@ namespace AKMWebRole
         protected void Run_Click(object sender, EventArgs e)
         {
             FreezeUI();
+            ClearIndicators();
             Status.Text = "Running...";
 
-            jobID = Guid.NewGuid();
-            AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, new KMeansJobData(jobID, int.Parse(N.Text), int.Parse(K.Text), int.Parse(M.Text), int.Parse(MaxIterationCount.Text)));
+            Guid jobID = Guid.NewGuid();
+            Session.Add("jobID", jobID);
+            AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, new KMeansJobData(jobID, int.Parse(N.Text), int.Parse(K.Text), int.Parse(M.Text), int.Parse(MaxIterationCount.Text), DateTime.Now));
 
             WaitForResults();
+        }
+
+        private void ClearIndicators()
+        {
+            Visualization.Text = "";
+            Points.Text = "";
+            Centroids.Text = "";
+            Status.Text = "";
+            Stats.Text = "";
         }
 
         private void FreezeUnfreezeUI(bool freeze = true)
@@ -62,11 +71,34 @@ namespace AKMWebRole
         {
             Status.Text += ".";
 
+            Guid jobID = (Guid)Session["jobID"];
+
             System.Diagnostics.Trace.TraceInformation("[WebRole] UpdateTimer_Tick(), JobID={0}", jobID);
 
+            AzureHelper.PollForMessage(AzureHelper.StatusQueue,
+                message => ((KMeansJobStatus)message).JobID == jobID,
+                ShowStatus);
             AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
-                message => true /*((KMeansJobResult)message).JobID == jobID*/,
+                message => ((KMeansJobResult)message).JobID == jobID,
                 ShowResults);
+        }
+
+        private bool ShowStatus(AzureMessage message)
+        {
+            KMeansJobStatus jobStatus = message as KMeansJobStatus;
+
+            System.Diagnostics.Trace.TraceInformation("[WebRole] ShowStatus(), JobID={0}", jobStatus.JobID);
+
+            DateTime now = DateTime.Now;
+
+            Stats.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
+                jobStatus.IterationNumber,
+                (now - jobStatus.IterationStartTime).TotalSeconds,
+                (now - jobStatus.JobStartTime).TotalSeconds);
+
+            UpdatePointsCentroids(jobStatus.Points, jobStatus.Centroids);
+
+            return true;
         }
 
         private bool ShowResults(AzureMessage message)
@@ -78,51 +110,53 @@ namespace AKMWebRole
             StopWaitingForResults();
             Status.Text = "Done!";
 
-            CloudBlob points = AzureHelper.GetBlob(jobResult.Points);
-            using (BlobStream pointsStream = points.OpenRead())
+            UnfreezeUI();
+            return true;
+        }
+
+        private void UpdatePointsCentroids(Uri pointsUri, Uri centroidsUri)
+        {
+            StringBuilder visualization = new StringBuilder();
+            StringBuilder centroidsString = new StringBuilder();
+            StringBuilder pointsString = new StringBuilder();
+
+            CloudBlob pointsBlob = AzureHelper.GetBlob(pointsUri);
+            using (BlobStream pointsStream = pointsBlob.OpenRead())
             {
-                StringBuilder pointsString = new StringBuilder();
                 byte[] bytes = new byte[ClusterPoint.Size];
                 while (pointsStream.Position + ClusterPoint.Size <= pointsStream.Length)
                 {
                     pointsStream.Read(bytes, 0, bytes.Length);
                     ClusterPoint p = ClusterPoint.FromByteArray(bytes);
-                    pointsString.AppendFormat("({0},{1},{2}), ", p.X, p.Y, p.CentroidID);
 
-                    Label point = new Label();
-                    point.CssClass = "point";
-                    point.Style.Add(HtmlTextWriterStyle.Top, PointUnitsToPixels(p.Y));
-                    point.Style.Add(HtmlTextWriterStyle.Left, PointUnitsToPixels(p.X));
-                    point.Style.Add(HtmlTextWriterStyle.BackgroundColor, GuidToColor(p.CentroidID));
-                    Visualization.Controls.Add(point);
-
+                    pointsString.AppendFormat("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>", p.X, p.Y, p.CentroidID);
+                    visualization.AppendFormat("<div class=\"point\" style=\"top:{0}px;left:{1}px;background-color:{2}\"></div>",
+                        PointUnitsToPixels(p.Y),
+                        PointUnitsToPixels(p.X),
+                        GuidToColor(p.CentroidID));
                 }
-                Points.Text = pointsString.ToString();
             }
 
-            CloudBlob centroids = AzureHelper.GetBlob(jobResult.Centroids);
-            using (BlobStream centroidsStream = centroids.OpenRead())
+            CloudBlob centroidsBlob = AzureHelper.GetBlob(centroidsUri);
+            using (BlobStream centroidsStream = centroidsBlob.OpenRead())
             {
-                StringBuilder centroidsString = new StringBuilder();
                 byte[] bytes = new byte[Centroid.Size];
                 while (centroidsStream.Position + Centroid.Size <= centroidsStream.Length)
                 {
                     centroidsStream.Read(bytes, 0, bytes.Length);
                     Centroid p = Centroid.FromByteArray(bytes);
-                    centroidsString.AppendFormat("({0},{1},{2}), ", p.ID, p.X, p.Y);
 
-                    Label centroid = new Label();
-                    centroid.CssClass = "centroid";
-                    centroid.Style.Add(HtmlTextWriterStyle.Top, PointUnitsToPixels(p.Y));
-                    centroid.Style.Add(HtmlTextWriterStyle.Left, PointUnitsToPixels(p.X));
-                    centroid.Style.Add(HtmlTextWriterStyle.BackgroundColor, GuidToColor(p.ID));
-                    Visualization.Controls.Add(centroid);
+                    centroidsString.AppendFormat("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>", p.ID, p.X, p.Y);
+                    visualization.AppendFormat("<div class=\"centroid\" style=\"top:{0}px;left:{1}px;background-color:{2}\"></div>",
+                        PointUnitsToPixels(p.Y),
+                        PointUnitsToPixels(p.X),
+                        GuidToColor(p.ID));
                 }
-                Centroids.Text = centroidsString.ToString();
             }
 
-            UnfreezeUI();
-            return true;
+            Points.Text = pointsString.ToString();
+            Centroids.Text = centroidsString.ToString();
+            Visualization.Text = visualization.ToString();
         }
 
         private string GuidToColor(Guid guid)
@@ -134,7 +168,7 @@ namespace AKMWebRole
         private string PointUnitsToPixels(float pointUnits)
         {
             int pixels = (int)((pointUnits + 50) * 5); // scale from (-50,50) to (0,500)
-            return pixels.ToString() + "px";
+            return pixels.ToString();
         }
     }
 }

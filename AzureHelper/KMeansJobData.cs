@@ -14,14 +14,16 @@ namespace AzureUtils
         public int K { get; set; }
         public int M { get; set; }
         public int MaxIterationCount { get; set; }
+        public DateTime JobStartTime { get; set; }
 
-        public KMeansJobData(Guid jobID, int n, int k, int m, int maxIterationCount)
+        public KMeansJobData(Guid jobID, int n, int k, int m, int maxIterationCount, DateTime jobStartTime)
         {
             this.JobID = jobID;
             this.N = n;
             this.K = k;
             this.M = m;
             this.MaxIterationCount = maxIterationCount;
+            this.JobStartTime = jobStartTime;
         }
 
         public KMeansJobData(KMeansJobData jobData)
@@ -31,6 +33,7 @@ namespace AzureUtils
             K = jobData.K;
             M = jobData.M;
             MaxIterationCount = jobData.MaxIterationCount;
+            JobStartTime = jobData.JobStartTime;
         }
     }
 }

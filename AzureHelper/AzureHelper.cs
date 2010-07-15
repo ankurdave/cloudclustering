@@ -14,7 +14,8 @@ namespace AzureUtils
         public const string ServerRequestQueue = "serverrequest";
         public const string WorkerResponseQueue = "workerresponse";
         public const string WorkerRequestQueue = "workerrequest";
-        public const string ServerResponseQueue = "serverresponse"; 
+        public const string ServerResponseQueue = "serverresponse";
+        public const string StatusQueue = "status";
         public const string PointsBlob = "points";
         public const string CentroidsBlob = "centroids";
 
@@ -83,6 +84,8 @@ namespace AzureUtils
                     return KMeansTaskData.FromMessage<KMeansTaskData>(queueMessage);
                 case WorkerResponseQueue:
                     return KMeansTaskResult.FromMessage<KMeansTaskResult>(queueMessage);
+                case StatusQueue:
+                    return KMeansJobStatus.FromMessage<KMeansJobStatus>(queueMessage);
                 default:
                     throw new InvalidOperationException();
             }

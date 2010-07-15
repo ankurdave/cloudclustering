@@ -20,6 +20,7 @@ namespace AzureUtils
         private List<KMeansTask> tasks = new List<KMeansTask>();
         private List<String> pointsBlockIDs = new List<string>();
         private KMeansJobData jobData;
+        private KMeansJobStatus jobStatus;
         public int IterationCount { get; private set; }
 
         public KMeansJob(KMeansJobData jobData) {
@@ -76,17 +77,16 @@ namespace AzureUtils
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
 
+            DateTime now = DateTime.Now;
+
+            jobStatus = new KMeansJobStatus(jobData, IterationCount, now, Points.Uri, Centroids.Uri);
+
             for (int i = 0; i < jobData.M; i++)
             {
                 Guid taskID = Guid.NewGuid();
                 CloudBlob pointPartition = CopyPointPartition(Points, i, jobData.M, container, taskID.ToString());
 
-                KMeansTaskData taskData = new KMeansTaskData(
-                    jobData,
-                    taskID,
-                    pointPartition.Uri,
-                    i,
-                    Centroids.Uri);
+                KMeansTaskData taskData = new KMeansTaskData(jobData, taskID, pointPartition.Uri, Centroids.Uri, now);
 
                 tasks.Add(new KMeansTask(taskData));
 
@@ -163,6 +163,8 @@ namespace AzureUtils
 
             IterationCount++;
 
+            UpdateJobStatus();
+
             if (NumPointsChangedAboveThreshold() && !MaxIterationCountExceeded())
             {
                 RecalculateCentroids();
@@ -172,6 +174,11 @@ namespace AzureUtils
             {
                 ReturnResults();
             }
+        }
+
+        private void UpdateJobStatus()
+        {
+            AzureHelper.EnqueueMessage(AzureHelper.StatusQueue, jobStatus);
         }
 
         private bool MaxIterationCountExceeded()
@@ -308,6 +315,14 @@ namespace AzureUtils
                     centroidsWrite.Write(centroidBytes, 0, Centroid.Size);
                 }
             }
+
+            ResetPointChangedCounts();
+        }
+
+        private void ResetPointChangedCounts()
+        {
+            TotalNumPointsChanged = 0;
+            totalPointsProcessedDataByCentroid.Clear();
         }
 
         private void ReturnResults()

@@ -76,6 +76,15 @@ namespace AKMWebRole {
         protected global::System.Web.UI.WebControls.Button Run;
         
         /// <summary>
+        /// Visualization control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Literal Visualization;
+        
+        /// <summary>
         /// Status control.
         /// </summary>
         /// <remarks>
@@ -83,6 +92,15 @@ namespace AKMWebRole {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Status;
+        
+        /// <summary>
+        /// Stats control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Literal Stats;
         
         /// <summary>
         /// Points control.
@@ -101,15 +119,6 @@ namespace AKMWebRole {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Centroids;
-        
-        /// <summary>
-        /// Visualization control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Panel Visualization;
         
         /// <summary>
         /// UpdateTimer control.

@@ -75,7 +75,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void InitializeStorageTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, 4, 6, 10);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, 4, 6, 10, DateTime.Now);
             KMeansJob target = new KMeansJob(jobData);
             target.InitializeStorage();
             
@@ -156,7 +156,7 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void RecalculateCentroidsTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, 1, 1, 10);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, 1, 1, 10, DateTime.Now);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
 
@@ -194,7 +194,7 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void CopyPointPartitionTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10, DateTime.Now);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
             int partitionNumber = 0;
@@ -224,9 +224,10 @@ namespace AzureUtilsTest
         {
             // TODO: Add test case where completed tasks already exist in KMeansJob, and make sure things work in that case. Basically, test multiple iterations.
 
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10, DateTime.Now);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
+            target.EnqueueTasks();
 
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
@@ -240,7 +241,8 @@ namespace AzureUtilsTest
                 pointPartitionWriteStream.Write(arbitraryBytes, 0, arbitraryBytes.Length);
             }
 
-            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), pointPartition.Uri, 0, target.Centroids.Uri);
+            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), pointPartition.Uri, target.Centroids.Uri, DateTime.Now);
+            target.tasks.Clear();
             target.tasks.Add(new KMeansTask(taskData));
             KMeansTaskResult taskResult = new KMeansTaskResult(taskData);
             taskResult.NumPointsChanged = 2;
@@ -320,7 +322,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void MultiIterationJobTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 2);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 2, DateTime.Now);
             KMeansJob_Accessor job = new KMeansJob_Accessor(jobData);
             
             // First iteration
