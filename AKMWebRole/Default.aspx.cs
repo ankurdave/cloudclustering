@@ -96,7 +96,14 @@ namespace AKMWebRole
                 (now - jobStatus.IterationStartTime).TotalSeconds,
                 (now - jobStatus.JobStartTime).TotalSeconds);
 
-            UpdatePointsCentroids(jobStatus.Points, jobStatus.Centroids);
+            try
+            {
+                UpdatePointsCentroids(jobStatus.Points, jobStatus.Centroids);
+            }
+            catch (StorageClientException e)
+            {
+                // No need to do anything, because this will be automatically retried again later
+            }
 
             return true;
         }

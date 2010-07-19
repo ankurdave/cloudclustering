@@ -33,6 +33,8 @@ namespace AzureUtils
         /// </summary>
         public void InitializeStorage()
         {
+            DateTime start = DateTime.Now;
+
             // Set up the storage client and the container
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
@@ -67,6 +69,10 @@ namespace AzureUtils
                     centroidsStream.Write(data, 0, data.Length);
                 }
             }
+
+            jobStatus = new KMeansJobStatus(jobData, IterationCount, start, Points.Uri, Centroids.Uri);
+            jobStatus.AddTimeBenchmark("InitializeStorage", DateTime.Now - start);
+            UpdateJobStatus();
         }
 
         /// <summary>
@@ -74,24 +80,25 @@ namespace AzureUtils
         /// </summary>
         public void EnqueueTasks()
         {
+            DateTime start = DateTime.Now;
+
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
-
-            DateTime now = DateTime.Now;
-
-            jobStatus = new KMeansJobStatus(jobData, IterationCount, now, Points.Uri, Centroids.Uri);
 
             for (int i = 0; i < jobData.M; i++)
             {
                 Guid taskID = Guid.NewGuid();
                 CloudBlob pointPartition = CopyPointPartition(Points, i, jobData.M, container, taskID.ToString());
 
-                KMeansTaskData taskData = new KMeansTaskData(jobData, taskID, pointPartition.Uri, Centroids.Uri, now);
+                KMeansTaskData taskData = new KMeansTaskData(jobData, taskID, pointPartition.Uri, Centroids.Uri, start);
 
                 tasks.Add(new KMeansTask(taskData));
 
                 AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData);
             }
+
+            jobStatus = new KMeansJobStatus(jobData, IterationCount, start, Points.Uri, Centroids.Uri);
+            jobStatus.AddTimeBenchmark("EnqueueTasks", DateTime.Now - start);
         }
 
         /// <summary>
@@ -101,6 +108,8 @@ namespace AzureUtils
         /// <returns>False if the given taskData result has already been counted, true otherwise.</returns>
         public bool ProcessWorkerResponse(KMeansTaskResult taskResult)
         {
+            DateTime start = DateTime.Now;
+
             // Make sure we're actually still waiting for a result for this taskData
             // If not, this might be a duplicate queue message
             if (!TaskResultMatchesRunningTask(taskResult))
@@ -113,15 +122,27 @@ namespace AzureUtils
             CloudBlob pointPartitionBlob = AzureHelper.GetBlob(taskResult.Points);
             using (BlobStream pointPartitionStream = pointPartitionBlob.OpenRead())
             {
-                if (pointPartitionStream.Length > 0)
+                byte[] buffer = new byte[32768];
+
+                // Upload pointPartitionStream as one or more blocks
+                while (pointPartitionStream.Position < pointPartitionStream.Length)
                 {
-                    Points.PutBlock(Convert.ToBase64String(taskResult.TaskID.ToByteArray()), pointPartitionStream, null);
-                    pointsBlockIDs.Add(Convert.ToBase64String(taskResult.TaskID.ToByteArray()));
+                    using (MemoryStream blockStream = new MemoryStream())
+                    {
+                        AzureHelper.CopyStreamUpToLimit(pointPartitionStream, blockStream, AzureHelper.MaxBlockSize, buffer);
+                        blockStream.Position = 0; // Reset blockStream's position so that it can be read by PutBlock
+
+                        string blockID = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+                        Points.PutBlock(blockID, blockStream, null);
+                        pointsBlockIDs.Add(blockID);
+                    }
                 }
             }
 
             // Copy out and integrate the data from the worker response
-            AddDataFromTaskResult(taskResult); // TODO: Debug this to make sure that it actually works
+            AddDataFromTaskResult(taskResult);
+
+            jobStatus.AddTimeBenchmark("ProcessWorkerResponse", DateTime.Now - start);
 
             // If this is the last worker to return, this iteration is done and we should start the next one
             if (NoMoreRunningTasks())

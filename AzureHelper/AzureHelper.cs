@@ -6,6 +6,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.ServiceRuntime;
 using System.Threading;
+using System.IO;
 
 namespace AzureUtils
 {
@@ -18,6 +19,11 @@ namespace AzureUtils
         public const string StatusQueue = "status";
         public const string PointsBlob = "points";
         public const string CentroidsBlob = "centroids";
+
+        /// <summary>
+        /// The maximum number of bytes that can be stored in a block. It's actually 4 MiB, but this leaves some headroom.
+        /// </summary>
+        public const int MaxBlockSize = 4000000;
 
         private static CloudStorageAccount _storageAccount;
         public static CloudStorageAccount StorageAccount
@@ -91,7 +97,7 @@ namespace AzureUtils
             }
         }
 
-        public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 1000, int iterationLimit = 0)
+        public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 500, int iterationLimit = 0)
         {
             for (int i = 0; iterationLimit == 0 || i < iterationLimit; i++)
             {
@@ -111,6 +117,21 @@ namespace AzureUtils
             CloudBlob blob = StorageAccount.CreateCloudBlobClient().GetBlobReference(uri.ToString());
             blob.FetchAttributes();
             return blob;
+        }
+
+        public static void CopyStreamUpToLimit(Stream input, Stream output, int maxBytesToCopy, byte[] copyBuffer)
+        {
+            int numBytesToRead, numBytesActuallyRead, numBytesAlreadyRead = 0;
+            while (true)
+            {
+                numBytesToRead = Math.Min(copyBuffer.Length, maxBytesToCopy - numBytesAlreadyRead);
+                numBytesActuallyRead = input.Read(copyBuffer, 0, numBytesToRead);
+                if (numBytesActuallyRead == 0)
+                    break;
+                numBytesAlreadyRead += numBytesActuallyRead;
+
+                output.Write(copyBuffer, 0, numBytesActuallyRead);
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ using System;
 using Microsoft.WindowsAzure.StorageClient;
 using System.Threading;
 using Microsoft.WindowsAzure;
+using System.IO;
 
 namespace AzureUtilsTest
 {
@@ -143,6 +144,54 @@ namespace AzureUtilsTest
             }
 
             Assert.AreEqual(blob.Properties.Length, AzureHelper.GetBlob(blob.Uri).Properties.Length);
+        }
+
+        /// <summary>
+        ///A test for CopyStreamUpToLimit where maxBytesToCopy is less than input.Length
+        ///</summary>
+        [TestMethod()]
+        public void CopyStreamUpToLimitTest()
+        {
+            byte[] bytes = new byte[8];
+            new Random().NextBytes(bytes);
+            MemoryStream input = new MemoryStream(bytes);
+            MemoryStream output = new MemoryStream();
+            int maxBytesToCopy = 5;
+            byte[] copyBuffer = new byte[2];
+            AzureHelper.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
+
+            int expectedOutputLength = Math.Min(maxBytesToCopy, bytes.Length);
+            Assert.AreEqual(expectedOutputLength, output.Length);
+
+            output.Position = 0;
+            for (int i = 0; i < output.Length; i++)
+            {
+                Assert.AreEqual(bytes[i], output.ReadByte());
+            }
+        }
+
+        /// <summary>
+        ///A test for CopyStreamUpToLimit where maxBytesToCopy is greater than input.Length
+        ///</summary>
+        [TestMethod()]
+        public void CopyStreamUpToLimitTest2()
+        {
+            byte[] bytes = new byte[8];
+            new Random().NextBytes(bytes);
+            MemoryStream input = new MemoryStream(bytes);
+            MemoryStream output = new MemoryStream();
+            int maxBytesToCopy = 100;
+            byte[] copyBuffer = new byte[2];
+            AzureHelper.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
+
+            int expectedOutputLength = Math.Min(maxBytesToCopy, bytes.Length);
+            Assert.AreEqual(expectedOutputLength, output.Length);
+
+            output.Position = 0;
+            for (int i = 0; i < output.Length; i++)
+            {
+                Assert.AreEqual(bytes[i], output.ReadByte());
+            }
         }
     }
 }

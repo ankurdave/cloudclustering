@@ -24,7 +24,7 @@ namespace AKMServerRole
                 AzureHelper.PollForMessage(AzureHelper.ServerRequestQueue, message => true, ProcessNewJob);
                 AzureHelper.PollForMessage(AzureHelper.WorkerResponseQueue, message => true, ProcessWorkerResponse);
             
-                Thread.Sleep(1000);
+                Thread.Sleep(500);
             }
         }
 

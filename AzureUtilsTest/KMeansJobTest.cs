@@ -264,15 +264,6 @@ namespace AzureUtilsTest
                     Assert.AreEqual(arbitraryBytes[i], pointsStream.ReadByte());
                 }
             }
-
-            // Verify that the data from taskResult got added
-            Assert.AreEqual(taskResult.NumPointsChanged, target.TotalNumPointsChanged);
-            Assert.AreEqual(taskResult.PointsProcessedDataByCentroid[centroidID].NumPointsProcessed,
-                target.totalPointsProcessedDataByCentroid[centroidID].NumPointsProcessed);
-            Assert.AreEqual(taskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.X,
-                target.totalPointsProcessedDataByCentroid[centroidID].PartialPointSum.X);
-            Assert.AreEqual(taskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.Y,
-                target.totalPointsProcessedDataByCentroid[centroidID].PartialPointSum.Y);
         }
 
         [TestMethod()]
