@@ -43,6 +43,7 @@ namespace AKMWorkerRole
             PerformanceLog log = new PerformanceLog(task.JobID.ToString(), "ProcessNewTask", start, end);
             log.Points = task.Points.ToString();
             log.Centroids = task.Centroids.ToString();
+            log.IterationCount = task.Iteration;
             AzureHelper.PerformanceLogger.Insert(log);
 
             return true;

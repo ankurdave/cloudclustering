@@ -92,39 +92,13 @@ namespace AKMWebRole
 
             Stats.Text = string.Empty;
 
-            const string GanttColorBar = "FF9900";
-            const string GanttColorSpace = "FF990000";
-            List<string> ganttColors = new List<string>();
-            List<List<string>> ganttData = new List<List<string>>();
-            List<string> ganttLegend = new List<string>();
-
-            DateTime earliestStartTime = logs.First().StartTime;
-
             foreach (PerformanceLog log in logs)
             {
                 Stats.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
                     log.IterationCount,
                     log.MethodName,
                     (log.EndTime - log.StartTime).TotalSeconds);
-                
-                List<string> ganttDataSet = new List<string>();
-                
-                ganttDataSet.Add((log.StartTime - earliestStartTime).TotalSeconds.ToString());
-                ganttColors.Add(GanttColorSpace);
-                
-                ganttDataSet.Add((log.EndTime - earliestStartTime).TotalSeconds.ToString());
-                ganttColors.Add(GanttColorBar);
-
-                ganttLegend.Add(log.MethodName);
-
-                ganttData.Add(ganttDataSet);
             }
-
-            string ganttUrl = String.Format(@"http://chart.apis.google.com/chart?chxl=1:|{2}&chxr=0,0,160&chxt=x,y&chbh=a&chs=440x220&cht=bhs&chco={0}&chd=t:{1}",
-                String.Join(",", ganttColors),
-                String.Join("|", ganttData.Select(dataSet => String.Join(",", dataSet))),
-                String.Join("|", ganttLegend));
-            StatsGantt.ImageUrl = ganttUrl;
 
             var logsByMethod = logs.GroupBy(log => log.MethodName);
 

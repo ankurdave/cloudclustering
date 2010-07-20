@@ -92,7 +92,7 @@ namespace AzureUtils
                 Guid taskID = Guid.NewGuid();
                 CloudBlob pointPartition = CopyPointPartition(Points, i, jobData.M, container, taskID.ToString());
 
-                KMeansTaskData taskData = new KMeansTaskData(jobData, taskID, pointPartition.Uri, Centroids.Uri, start);
+                KMeansTaskData taskData = new KMeansTaskData(jobData, taskID, pointPartition.Uri, Centroids.Uri, start, IterationCount);
 
                 tasks.Add(new KMeansTask(taskData));
 
