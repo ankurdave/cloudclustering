@@ -80,6 +80,7 @@
     <Compile Include="KMeansTaskResultTest.cs" />
     <Compile Include="PerformanceLogDataSourceTest.cs" />
     <Compile Include="PointsProcessedDataTest.cs" />
+    <Compile Include="PointStreamTest.cs" />
     <Compile Include="PointTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -31,43 +31,83 @@ namespace AzureUtils
         /// </summary>
         private void ProcessPoints()
         {
-            CloudBlob points = AzureHelper.GetBlob(task.Points);
-            using (BlobStream pointsStreamRead = points.OpenRead(), pointsStreamWrite = points.OpenWrite())
+            // Initialize the write blob
+            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(task.JobID.ToString());
+            container.CreateIfNotExist();
+            CloudBlob writeBlob = container.GetBlobReference(Guid.NewGuid().ToString());
+
+            // Do the mapping and write the new blob
+            using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(task.Points), ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
-                ClusterPoint.MapByteStream(pointsStreamRead, pointsStreamWrite,
-                    clusterPoint => AssignClusterPointToNearestCentroid(clusterPoint));
+                var assignedPoints = stream.AsParallel().Select(AssignClusterPointToNearestCentroid);
+
+                TaskResult.NumPointsChanged = assignedPoints.Select(result => result.NumPointsChanged).Sum();
+                TaskResult.PointsProcessedDataByCentroid = assignedPoints.Select(result => result.PointsProcessedDataByCentroid).Aggregate(MergePointsProcessedDataByCentroid);
+
+                using (BlobStream writeStream = writeBlob.OpenWrite())
+                {
+                    byte[] bytes;
+                    foreach (var p in assignedPoints)
+                    {
+                        bytes = p.Result.ToByteArray();
+                        writeStream.Write(bytes, 0, bytes.Length);
+                    }
+                }
             }
+
+            // Change TaskResult.Points to refer to the new blob
+            TaskResult.Points = writeBlob.Uri;
         }
 
-        private void InitializeCentroids()
+        private static Dictionary<Guid, PointsProcessedData> MergePointsProcessedDataByCentroid(Dictionary<Guid, PointsProcessedData> runningTotal, Dictionary<Guid, PointsProcessedData> next)
         {
-            CloudBlob centroidsBlob = AzureHelper.GetBlob(task.Centroids);
-            using (BlobStream centroidsStream = centroidsBlob.OpenRead())
+            foreach (var pair in next)
             {
-                centroids = Centroid.ListFromByteStream(centroidsStream);
+                if (runningTotal.ContainsKey(pair.Key))
+                {
+                    runningTotal[pair.Key] += pair.Value;
+                }
+                else
+                {
+                    runningTotal.Add(pair.Key, pair.Value);
+                }
             }
+            return runningTotal;
         }
 
-        private ClusterPoint AssignClusterPointToNearestCentroid(ClusterPoint clusterPoint)
+        private ClusterPointProcessingResult AssignClusterPointToNearestCentroid(ClusterPoint clusterPoint)
         {
             ClusterPoint result = new ClusterPoint(clusterPoint);
             result.CentroidID = centroids.MinElement(centroid => Point.Distance(clusterPoint, centroid)).ID;
 
-            // Increment NumPointsChanged if appropriate
-            if (clusterPoint.CentroidID != result.CentroidID)
-            {
-                TaskResult.NumPointsChanged++;
-            }
+            int numPointsChanged = (clusterPoint.CentroidID != result.CentroidID) ? 1 : 0;
 
-            // Add to the point sum in PointsProcessedDataByCentroid
-            if (!TaskResult.PointsProcessedDataByCentroid.ContainsKey(result.CentroidID))
-            {
-                TaskResult.PointsProcessedDataByCentroid[result.CentroidID] = new PointsProcessedData();
-            }
-            TaskResult.PointsProcessedDataByCentroid[result.CentroidID].NumPointsProcessed++;
-            TaskResult.PointsProcessedDataByCentroid[result.CentroidID].PartialPointSum += result;
+            Dictionary<Guid, PointsProcessedData> pointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
+            pointsProcessedDataByCentroid[result.CentroidID] = new PointsProcessedData();
+            pointsProcessedDataByCentroid[result.CentroidID].NumPointsProcessed++;
+            pointsProcessedDataByCentroid[result.CentroidID].PartialPointSum += result;
 
-            return result;
+            return new ClusterPointProcessingResult
+            {
+                Result = result,
+                NumPointsChanged = numPointsChanged,
+                PointsProcessedDataByCentroid = pointsProcessedDataByCentroid
+            };
         }
+
+        private void InitializeCentroids()
+        {
+            using (PointStream<Centroid> stream = new PointStream<Centroid>(AzureHelper.GetBlob(task.Centroids), Centroid.FromByteArray, Centroid.Size))
+            {
+                centroids = stream.ToList();
+            }
+        }
+    }
+
+    class ClusterPointProcessingResult
+    {
+        public ClusterPoint Result { get; set; }
+        public int NumPointsChanged { get; set; }
+        public Dictionary<Guid, PointsProcessedData> PointsProcessedDataByCentroid { get; set; }
     }
 }

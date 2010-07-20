@@ -5,7 +5,6 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using AzureUtils;
-using Microsoft.WindowsAzure.StorageClient;
 using System.Text;
 
 namespace AKMWebRole
@@ -114,14 +113,7 @@ namespace AKMWebRole
                     logGroup.Count());
             }
 
-            try
-            {
-                UpdatePointsCentroids(new Uri(logs.First().Points), new Uri(logs.First().Centroids), false);
-            }
-            catch (StorageClientException e)
-            {
-                // No need to do anything, because this will be automatically retried again later
-            }
+            UpdatePointsCentroids(new Uri(logs.First().Points), new Uri(logs.First().Centroids), false);
         }
 
         private bool ShowResults(AzureMessage message)
@@ -145,17 +137,11 @@ namespace AKMWebRole
             StringBuilder centroidsString = new StringBuilder();
             StringBuilder pointsString = new StringBuilder();
 
-            CloudBlob pointsBlob = AzureHelper.GetBlob(pointsUri);
-            using (BlobStream pointsStream = pointsBlob.OpenRead())
+            using (PointStream<ClusterPoint> pointsStream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(pointsUri), ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
                 int pointIndex = 0;
-
-                byte[] bytes = new byte[ClusterPoint.Size];
-                while (pointsStream.Position + ClusterPoint.Size <= pointsStream.Length)
+                foreach (ClusterPoint p in pointsStream)
                 {
-                    pointsStream.Read(bytes, 0, bytes.Length);
-                    ClusterPoint p = ClusterPoint.FromByteArray(bytes);
-
                     pointsString.AppendFormat("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>", p.X, p.Y, p.CentroidID);
                     visualization.AppendFormat("<div class=\"point\" style=\"top:{0}px;left:{1}px;background-color:{2}\"></div>",
                         PointUnitsToPixels(p.Y),
@@ -168,15 +154,10 @@ namespace AKMWebRole
                 }
             }
 
-            CloudBlob centroidsBlob = AzureHelper.GetBlob(centroidsUri);
-            using (BlobStream centroidsStream = centroidsBlob.OpenRead())
+            using (PointStream<Centroid> centroidsStream = new PointStream<Centroid>(AzureHelper.GetBlob(centroidsUri), Centroid.FromByteArray, Centroid.Size))
             {
-                byte[] bytes = new byte[Centroid.Size];
-                while (centroidsStream.Position + Centroid.Size <= centroidsStream.Length)
+                foreach (Centroid p in centroidsStream)
                 {
-                    centroidsStream.Read(bytes, 0, bytes.Length);
-                    Centroid p = Centroid.FromByteArray(bytes);
-
                     centroidsString.AppendFormat("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>", p.ID, p.X, p.Y);
                     visualization.AppendFormat("<div class=\"centroid\" style=\"top:{0}px;left:{1}px;background-color:{2}\"></div>",
                         PointUnitsToPixels(p.Y),

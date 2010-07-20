@@ -2,6 +2,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using Microsoft.WindowsAzure.StorageClient;
+using System.Linq;
 
 namespace AzureUtilsTest
 {
@@ -74,7 +76,7 @@ namespace AzureUtilsTest
         {
             KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, 2, 3, 10, null, null, DateTime.Now, DateTime.Now, 0);
             KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(task);
-            
+
             target.centroids = new List<Centroid>();
             target.centroids.Add(new Centroid
             {
@@ -95,17 +97,69 @@ namespace AzureUtilsTest
                 X = 1.0F,
                 Y = 2.0F
             };
-            
+
             ClusterPoint expected = new ClusterPoint
             {
                 CentroidID = target.centroids[0].ID,
                 X = 1.0F,
                 Y = 2.0F
             };
-            ClusterPoint actual;
+            ClusterPointProcessingResult_Accessor actual;
             actual = target.AssignClusterPointToNearestCentroid(clusterPoint);
-            
-            Assert.AreEqual(expected.CentroidID, actual.CentroidID);
+
+            Assert.AreEqual(expected.CentroidID, actual.Result.CentroidID);
+        }
+
+        /// <summary>
+        ///A test for ProcessPoints
+        ///</summary>
+        [TestMethod()]
+        [DeploymentItem("AzureHelper.dll")]
+        public void ProcessPointsTest()
+        {
+            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference("test");
+            container.CreateIfNotExist();
+            CloudBlob points = container.GetBlobReference(Guid.NewGuid().ToString());
+            CloudBlob centroids = container.GetBlobReference(Guid.NewGuid().ToString());
+
+            using (BlobStream stream = points.OpenWrite()) {
+                byte[] bytes = new ClusterPoint(1, 2, Guid.Empty).ToByteArray();
+                stream.Write(bytes, 0, bytes.Length);
+
+                bytes = new ClusterPoint(3, 4, Guid.Empty).ToByteArray();
+                stream.Write(bytes, 0, bytes.Length);
+
+                bytes = new ClusterPoint(5, 6, Guid.Empty).ToByteArray();
+                stream.Write(bytes, 0, bytes.Length);
+            }
+            Guid centroidID = Guid.NewGuid();
+            using (BlobStream stream = centroids.OpenWrite()) {
+                byte[] bytes = new Centroid(Guid.NewGuid(), 1000, 1000).ToByteArray();
+                stream.Write(bytes, 0, bytes.Length);
+
+                bytes = new Centroid(centroidID, 3, 4).ToByteArray();
+                stream.Write(bytes, 0, bytes.Length);
+            }
+
+            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, 2, 1, 0, points.Uri, centroids.Uri, DateTime.UtcNow, DateTime.UtcNow, 0));
+            target.InitializeCentroids();
+            target.ProcessPoints();
+
+            using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(target.TaskResult.Points).OpenRead(), ClusterPoint.FromByteArray, ClusterPoint.Size))
+            {
+                foreach (ClusterPoint p in stream)
+                {
+                    Assert.AreEqual(centroidID, p.CentroidID);
+                }
+            }
+
+            Assert.AreEqual(3, target.TaskResult.NumPointsChanged);
+            Assert.IsTrue(target.TaskResult.PointsProcessedDataByCentroid.ContainsKey(centroidID));
+            Assert.AreEqual(3, target.TaskResult.PointsProcessedDataByCentroid[centroidID].NumPointsProcessed);
+
+            const double Epsilon = 0.0001;
+            Assert.IsTrue(Math.Abs((1 + 3 + 5) - target.TaskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.X) < Epsilon);
+            Assert.IsTrue(Math.Abs((2 + 4 + 6) - target.TaskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.Y) < Epsilon);
         }
     }
 }
