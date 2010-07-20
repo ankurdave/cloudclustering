@@ -25,6 +25,8 @@ namespace AKMWorkerRole
 
         private bool ProcessNewTask(AzureMessage message)
         {
+            DateTime start = DateTime.UtcNow;
+
             KMeansTaskData task = message as KMeansTaskData;
             
             System.Diagnostics.Trace.TraceInformation("[WorkerRole] ProcessNewTask(jobID={1}, taskID={0})", task.TaskID, task.JobID);
@@ -36,6 +38,12 @@ namespace AKMWorkerRole
             // Send the result back
             taskProcessor.TaskResult.SavePointsProcessedDataByCentroid();
             AzureHelper.EnqueueMessage(AzureHelper.WorkerResponseQueue, taskProcessor.TaskResult);
+
+            DateTime end = DateTime.UtcNow;
+            PerformanceLog log = new PerformanceLog(task.JobID.ToString(), "ProcessNewTask", start, end);
+            log.Points = task.Points.ToString();
+            log.Centroids = task.Centroids.ToString();
+            AzureHelper.PerformanceLogger.Insert(log);
 
             return true;
         }

@@ -28,7 +28,9 @@
 
             <div style="float:right">
                 <p><strong>Status:</strong> <asp:Label ID="Status" runat="server" Text="Click Run K-Means to see results."></asp:Label></p>
-                <table><tr><th>Iteration</th><th>Iteration time</th><th>Total time</th></tr><asp:Literal ID="Stats" runat="server"></asp:Literal></table>
+                <table><tr><th>Method</th><th>Min time (s)</th><th>Average time (s)</th><th>Max time (s)</th><th>Count</th></tr><asp:Literal ID="StatsSummary" runat="server"></asp:Literal></table>
+                <asp:Image ID="StatsGantt" runat="server" />
+                <table><tr><th>Iteration</th><th>Method</th><th>Time taken (s)</th></tr><asp:Literal ID="Stats" runat="server"></asp:Literal></table>
             </div>
 
             <div class="visualization"><asp:Literal ID="Visualization" runat="server"></asp:Literal></div>

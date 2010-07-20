@@ -16,7 +16,6 @@ namespace AzureUtils
         public const string WorkerResponseQueue = "workerresponse";
         public const string WorkerRequestQueue = "workerrequest";
         public const string ServerResponseQueue = "serverresponse";
-        public const string StatusQueue = "status";
         public const string PointsBlob = "points";
         public const string CentroidsBlob = "centroids";
 
@@ -48,6 +47,20 @@ namespace AzureUtils
             }
         }
 
+        private static PerformanceLogDataSource _performanceLogger;
+        public static PerformanceLogDataSource PerformanceLogger
+        {
+            get
+            {
+                if (_performanceLogger == null)
+                {
+                    _performanceLogger = new PerformanceLogDataSource();
+                }
+
+                return _performanceLogger;
+            }
+        }
+
         public static void EnqueueMessage(string queueName, AzureMessage message)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
@@ -59,9 +72,17 @@ namespace AzureUtils
         public static bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
-            queue.CreateIfNotExist();
 
-            CloudQueueMessage queueMessage = queue.GetMessage();
+            CloudQueueMessage queueMessage;
+            try
+            {
+                queue.CreateIfNotExist();
+                queueMessage = queue.GetMessage();
+            }
+            catch (StorageServerException e)
+            {
+                return false;
+            }
 
             if (queueMessage == null)
                 return false;
@@ -90,8 +111,6 @@ namespace AzureUtils
                     return KMeansTaskData.FromMessage<KMeansTaskData>(queueMessage);
                 case WorkerResponseQueue:
                     return KMeansTaskResult.FromMessage<KMeansTaskResult>(queueMessage);
-                case StatusQueue:
-                    return KMeansJobStatus.FromMessage<KMeansJobStatus>(queueMessage);
                 default:
                     throw new InvalidOperationException();
             }

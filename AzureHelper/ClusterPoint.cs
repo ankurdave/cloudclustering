@@ -14,7 +14,7 @@ namespace AzureUtils
             : base()
         { }
 
-        public ClusterPoint(float x, float y, Guid centroidID)
+        public ClusterPoint(double x, double y, Guid centroidID)
             : base(x, y)
         {
             this.CentroidID = centroidID;

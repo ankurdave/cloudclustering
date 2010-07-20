@@ -20,7 +20,6 @@ namespace AzureUtils
         private List<KMeansTask> tasks = new List<KMeansTask>();
         private List<String> pointsBlockIDs = new List<string>();
         private KMeansJobData jobData;
-        private KMeansJobStatus jobStatus;
         public int IterationCount { get; private set; }
 
         public KMeansJob(KMeansJobData jobData) {
@@ -33,7 +32,7 @@ namespace AzureUtils
         /// </summary>
         public void InitializeStorage()
         {
-            DateTime start = DateTime.Now;
+            DateTime start = DateTime.UtcNow;
 
             // Set up the storage client and the container
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
@@ -49,8 +48,8 @@ namespace AzureUtils
                 for (int i = 0; i < jobData.N; i++)
                 {
                     byte[] data = new ClusterPoint(
-                        random.Next(-PointRange, PointRange),
-                        random.Next(-PointRange, PointRange),
+                        random.NextDouble() * 100 - 50,
+                        random.NextDouble() * 100 - 50,
                         Guid.Empty).ToByteArray();
                     pointsStream.Write(data, 0, data.Length);
                 }
@@ -70,9 +69,12 @@ namespace AzureUtils
                 }
             }
 
-            jobStatus = new KMeansJobStatus(jobData, IterationCount, start, Points.Uri, Centroids.Uri);
-            jobStatus.AddTimeBenchmark("InitializeStorage", DateTime.Now - start);
-            UpdateJobStatus();
+            DateTime end = DateTime.UtcNow;
+            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "InitializeStorage", start, end);
+            log.IterationCount = IterationCount;
+            log.Points = Points.Uri.ToString();
+            log.Centroids = Centroids.Uri.ToString();
+            AzureHelper.PerformanceLogger.Insert(log);
         }
 
         /// <summary>
@@ -80,7 +82,7 @@ namespace AzureUtils
         /// </summary>
         public void EnqueueTasks()
         {
-            DateTime start = DateTime.Now;
+            DateTime start = DateTime.UtcNow;
 
             CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
@@ -97,8 +99,12 @@ namespace AzureUtils
                 AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData);
             }
 
-            jobStatus = new KMeansJobStatus(jobData, IterationCount, start, Points.Uri, Centroids.Uri);
-            jobStatus.AddTimeBenchmark("EnqueueTasks", DateTime.Now - start);
+            DateTime end = DateTime.UtcNow;
+            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "EnqueueTasks", start, end);
+            log.IterationCount = IterationCount;
+            log.Points = Points.Uri.ToString();
+            log.Centroids = Centroids.Uri.ToString();
+            AzureHelper.PerformanceLogger.Insert(log);
         }
 
         /// <summary>
@@ -108,7 +114,7 @@ namespace AzureUtils
         /// <returns>False if the given taskData result has already been counted, true otherwise.</returns>
         public bool ProcessWorkerResponse(KMeansTaskResult taskResult)
         {
-            DateTime start = DateTime.Now;
+            DateTime start = DateTime.UtcNow;
 
             // Make sure we're actually still waiting for a result for this taskData
             // If not, this might be a duplicate queue message
@@ -142,7 +148,12 @@ namespace AzureUtils
             // Copy out and integrate the data from the worker response
             AddDataFromTaskResult(taskResult);
 
-            jobStatus.AddTimeBenchmark("ProcessWorkerResponse", DateTime.Now - start);
+            DateTime end = DateTime.UtcNow;
+            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "ProcessWorkerResponse", start, end);
+            log.IterationCount = IterationCount;
+            log.Points = Points.Uri.ToString();
+            log.Centroids = Centroids.Uri.ToString();
+            AzureHelper.PerformanceLogger.Insert(log);
 
             // If this is the last worker to return, this iteration is done and we should start the next one
             if (NoMoreRunningTasks())
@@ -184,8 +195,6 @@ namespace AzureUtils
 
             IterationCount++;
 
-            UpdateJobStatus();
-
             if (NumPointsChangedAboveThreshold() && !MaxIterationCountExceeded())
             {
                 RecalculateCentroids();
@@ -195,11 +204,6 @@ namespace AzureUtils
             {
                 ReturnResults();
             }
-        }
-
-        private void UpdateJobStatus()
-        {
-            AzureHelper.EnqueueMessage(AzureHelper.StatusQueue, jobStatus);
         }
 
         private bool MaxIterationCountExceeded()
@@ -267,7 +271,7 @@ namespace AzureUtils
 
         private static long PartitionLength(long numPoints, int numPartitions)
         {
-            return (long)Math.Ceiling((float)numPoints / numPartitions) * ClusterPoint.Size;
+            return (long)Math.Ceiling((double)numPoints / numPartitions) * ClusterPoint.Size;
         }
 
         private long NumClusterPointsInBlob(CloudBlob points)
@@ -310,6 +314,8 @@ namespace AzureUtils
 
         private void RecalculateCentroids()
         {
+            DateTime start = DateTime.UtcNow;
+
             using (BlobStream centroidsRead = Centroids.OpenRead(), centroidsWrite = Centroids.OpenWrite())
             {
                 byte[] centroidBytes = new byte[Centroid.Size];
@@ -322,7 +328,7 @@ namespace AzureUtils
                     if (totalPointsProcessedDataByCentroid.ContainsKey(c.ID))
                     {
                         newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
-                         / (float)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
+                         / (double)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
                     }
                     else
                     {
@@ -338,6 +344,13 @@ namespace AzureUtils
             }
 
             ResetPointChangedCounts();
+
+            DateTime end = DateTime.UtcNow;
+            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "RecalculateCentroids", start, end);
+            log.IterationCount = IterationCount;
+            log.Points = Points.Uri.ToString();
+            log.Centroids = Centroids.Uri.ToString();
+            AzureHelper.PerformanceLogger.Insert(log);
         }
 
         private void ResetPointChangedCounts()

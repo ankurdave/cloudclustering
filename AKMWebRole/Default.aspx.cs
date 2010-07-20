@@ -75,37 +75,79 @@ namespace AKMWebRole
 
             System.Diagnostics.Trace.TraceInformation("[WebRole] UpdateTimer_Tick(), JobID={0}", jobID);
 
-            AzureHelper.PollForMessage(AzureHelper.StatusQueue,
-                message => ((KMeansJobStatus)message).JobID == jobID,
-                ShowStatus);
+            UpdateStatus(jobID);
+
             AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
                 message => ((KMeansJobResult)message).JobID == jobID,
                 ShowResults);
         }
 
-        private bool ShowStatus(AzureMessage message)
+        private void UpdateStatus(Guid jobID)
         {
-            KMeansJobStatus jobStatus = message as KMeansJobStatus;
+            System.Diagnostics.Trace.TraceInformation("[WebRole] ShowStatus(), JobID={0}", jobID);
 
-            System.Diagnostics.Trace.TraceInformation("[WebRole] ShowStatus(), JobID={0}", jobStatus.JobID);
+            var logs = AzureHelper.PerformanceLogger.PerformanceLogs.Where(log => log.PartitionKey == jobID.ToString()).OrderBy(log => log.StartTime);
+            if (logs.Count() == 0)
+                return;
 
-            DateTime now = DateTime.Now;
+            Stats.Text = string.Empty;
 
-            Stats.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
-                jobStatus.IterationNumber,
-                (now - jobStatus.IterationStartTime).TotalSeconds,
-                (now - jobStatus.JobStartTime).TotalSeconds);
+            const string GanttColorBar = "FF9900";
+            const string GanttColorSpace = "FF990000";
+            List<string> ganttColors = new List<string>();
+            List<List<string>> ganttData = new List<List<string>>();
+            List<string> ganttLegend = new List<string>();
+
+            DateTime earliestStartTime = logs.First().StartTime;
+
+            foreach (PerformanceLog log in logs)
+            {
+                Stats.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
+                    log.IterationCount,
+                    log.MethodName,
+                    (log.EndTime - log.StartTime).TotalSeconds);
+                
+                List<string> ganttDataSet = new List<string>();
+                
+                ganttDataSet.Add((log.StartTime - earliestStartTime).TotalSeconds.ToString());
+                ganttColors.Add(GanttColorSpace);
+                
+                ganttDataSet.Add((log.EndTime - earliestStartTime).TotalSeconds.ToString());
+                ganttColors.Add(GanttColorBar);
+
+                ganttLegend.Add(log.MethodName);
+
+                ganttData.Add(ganttDataSet);
+            }
+
+            string ganttUrl = String.Format(@"http://chart.apis.google.com/chart?chxl=1:|{2}&chxr=0,0,160&chxt=x,y&chbh=a&chs=440x220&cht=bhs&chco={0}&chd=t:{1}",
+                String.Join(",", ganttColors),
+                String.Join("|", ganttData.Select(dataSet => String.Join(",", dataSet))),
+                String.Join("|", ganttLegend));
+            StatsGantt.ImageUrl = ganttUrl;
+
+            var logsByMethod = logs.GroupBy(log => log.MethodName);
+
+            StatsSummary.Text = string.Empty;
+
+            foreach (IGrouping<string, PerformanceLog> logGroup in logsByMethod)
+            {
+                StatsSummary.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>",
+                    logGroup.Key,
+                    logGroup.Min(log => (log.EndTime - log.StartTime).TotalSeconds),
+                    logGroup.Average(log => (log.EndTime - log.StartTime).TotalSeconds),
+                    logGroup.Max(log => (log.EndTime - log.StartTime).TotalSeconds),
+                    logGroup.Count());
+            }
 
             try
             {
-                UpdatePointsCentroids(jobStatus.Points, jobStatus.Centroids);
+                UpdatePointsCentroids(new Uri(logs.First().Points), new Uri(logs.First().Centroids), false);
             }
             catch (StorageClientException e)
             {
                 // No need to do anything, because this will be automatically retried again later
             }
-
-            return true;
         }
 
         private bool ShowResults(AzureMessage message)
@@ -117,11 +159,13 @@ namespace AKMWebRole
             StopWaitingForResults();
             Status.Text = "Done!";
 
+            UpdatePointsCentroids(jobResult.Points, jobResult.Centroids, true);
+
             UnfreezeUI();
             return true;
         }
 
-        private void UpdatePointsCentroids(Uri pointsUri, Uri centroidsUri)
+        private void UpdatePointsCentroids(Uri pointsUri, Uri centroidsUri, bool final)
         {
             StringBuilder visualization = new StringBuilder();
             StringBuilder centroidsString = new StringBuilder();
@@ -130,6 +174,8 @@ namespace AKMWebRole
             CloudBlob pointsBlob = AzureHelper.GetBlob(pointsUri);
             using (BlobStream pointsStream = pointsBlob.OpenRead())
             {
+                int pointIndex = 0;
+
                 byte[] bytes = new byte[ClusterPoint.Size];
                 while (pointsStream.Position + ClusterPoint.Size <= pointsStream.Length)
                 {
@@ -141,6 +187,10 @@ namespace AKMWebRole
                         PointUnitsToPixels(p.Y),
                         PointUnitsToPixels(p.X),
                         GuidToColor(p.CentroidID));
+
+                    pointIndex++;
+                    if (pointIndex > (final ? 10000 : 100))
+                        break;
                 }
             }
 
@@ -172,7 +222,7 @@ namespace AKMWebRole
             return "#" + guid.ToString("N").Substring(0, 6);
         }
 
-        private string PointUnitsToPixels(float pointUnits)
+        private string PointUnitsToPixels(double pointUnits)
         {
             int pixels = (int)((pointUnits + 50) * 5); // scale from (-50,50) to (0,500)
             return pixels.ToString();

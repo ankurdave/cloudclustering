@@ -94,8 +94,8 @@ namespace AzureUtilsTest
             Guid centroidID = Guid.NewGuid();
 
             MemoryStream stream = new MemoryStream();
-            stream.Write(BitConverter.GetBytes(2.53F), 0, sizeof(float));
-            stream.Write(BitConverter.GetBytes(4.56F), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(2.53), 0, sizeof(double));
+            stream.Write(BitConverter.GetBytes(4.56), 0, sizeof(double));
             stream.Write(centroidID.ToByteArray(), 0, 16);
             byte[] bytes = stream.ToArray();
 
@@ -107,9 +107,10 @@ namespace AzureUtilsTest
             };
             ClusterPoint actual;
             actual = ClusterPoint.FromByteArray(bytes);
-            
-            Assert.AreEqual(expected.X, actual.X);
-            Assert.AreEqual(expected.Y, actual.Y);
+
+            const double Epsilon = 0.0001;
+            Assert.IsTrue(Math.Abs(expected.X - actual.X) < Epsilon);
+            Assert.IsTrue(Math.Abs(expected.Y - actual.Y) < Epsilon);
             Assert.AreEqual(expected.CentroidID, actual.CentroidID);
         }
 
@@ -122,14 +123,14 @@ namespace AzureUtilsTest
             Guid centroidID = Guid.NewGuid();
             ClusterPoint target = new ClusterPoint
             {
-                X = 1.23F,
-                Y = 3.45F,
+                X = 1.23,
+                Y = 3.45,
                 CentroidID = centroidID
             };
 
             MemoryStream stream = new MemoryStream();
-            stream.Write(BitConverter.GetBytes(1.23F), 0, sizeof(float));
-            stream.Write(BitConverter.GetBytes(3.45F), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(1.23), 0, sizeof(double));
+            stream.Write(BitConverter.GetBytes(3.45), 0, sizeof(double));
             stream.Write(centroidID.ToByteArray(), 0, 16);
             byte[] expected = stream.ToArray();
 

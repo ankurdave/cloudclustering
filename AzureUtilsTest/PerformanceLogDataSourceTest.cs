@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace AzureUtilsTest
 {
@@ -73,9 +74,12 @@ namespace AzureUtilsTest
         public void InsertTest()
         {
             PerformanceLogDataSource target = new PerformanceLogDataSource();
-            PerformanceLog item = new PerformanceLog("job", "hello", DateTime.UtcNow, DateTime.UtcNow.AddSeconds(10));
+            PerformanceLog item = new PerformanceLog("job", Guid.NewGuid().ToString(), DateTime.UtcNow, DateTime.UtcNow.AddSeconds(10));
             target.Insert(item);
-            Assert.IsTrue(target.Select().Where(log => log.JobID == "job").Count() >= 1);
+            Assert.IsTrue(target
+                .PerformanceLogs
+                .Where(log => log.PartitionKey == item.PartitionKey && log.RowKey == item.RowKey)
+                .Count() >= 1);
         }
     }
 }

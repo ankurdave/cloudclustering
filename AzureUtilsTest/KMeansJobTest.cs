@@ -120,7 +120,7 @@ namespace AzureUtilsTest
                 }
             }
 
-            // Verify that unpacking a ClusterPoint actually yields a point with integer coordinates [-50, 50) and a null centroidID
+            // Verify that unpacking a ClusterPoint actually yields a point with coordinates [-50, 50) and a null centroidID
             byte[] pointBytes;
             using (BlobStream pointsStream = points.OpenRead())
             {
@@ -129,8 +129,8 @@ namespace AzureUtilsTest
             }
             ClusterPoint p = ClusterPoint.FromByteArray(pointBytes);
 
-            Assert.IsTrue(p.X >= -50 && p.X < 50 && IsInteger(p.X));
-            Assert.IsTrue(p.Y >= -50 && p.Y < 50 && IsInteger(p.Y));
+            Assert.IsTrue(p.X >= -50 && p.X < 50);
+            Assert.IsTrue(p.Y >= -50 && p.Y < 50);
             Assert.AreEqual(p.CentroidID, Guid.Empty);
 
             // Verify that the blobs are the correct length
@@ -138,7 +138,7 @@ namespace AzureUtilsTest
             Assert.AreEqual(centroids.Properties.Length, Centroid.Size * jobData.K);
         }
 
-        private bool IsInteger(float x)
+        private bool IsInteger(double x)
         {
             return IsCloseToZero(x - Math.Truncate(x));
         }

@@ -73,19 +73,20 @@ namespace AzureUtilsTest
         {
             Point p = new Point
             {
-                X = 10.92F,
-                Y = 7.35F
+                X = 10.92,
+                Y = 7.35
             };
-            float a = 2.1F;
+            double a = 2.1;
             Point expected = new Point
             {
-                X = 10.92F / 2.1F,
-                Y = 7.35F / 2.1F
+                X = 10.92 / 2.1,
+                Y = 7.35 / 2.1
             };
             Point actual;
             actual = (p / a);
-            Assert.AreEqual(expected.X, actual.X);
-            Assert.AreEqual(expected.Y, actual.Y);
+            const double Epsilon = 0.0001;
+            Assert.IsTrue(Math.Abs(expected.X - actual.X) < Epsilon);
+            Assert.IsTrue(Math.Abs(expected.Y - actual.Y) < Epsilon);
         }
 
         /// <summary>
@@ -94,25 +95,27 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void op_AdditionTest()
         {
+            const double Epsilon = 0.0001;
+
             Point p1 = new Point
             {
-                X = 10.92F,
-                Y = 7.35F
+                X = 10.92,
+                Y = 7.35
             };
             Point p2 = new Point
             {
-                X = 4.35F,
-                Y = 1.12F
+                X = 4.35,
+                Y = 1.12
             };
             Point expected = new Point
             {
-                X = 15.27F,
-                Y = 8.47F
+                X = 15.27,
+                Y = 8.47
             };
             Point actual;
             actual = (p1 + p2);
-            Assert.AreEqual(expected.X, actual.X);
-            Assert.AreEqual(expected.Y, actual.Y);
+            Assert.IsTrue(Math.Abs(expected.X - actual.X) < Epsilon);
+            Assert.IsTrue(Math.Abs(expected.Y - actual.Y) < Epsilon);
         }
 
         /// <summary>
@@ -122,20 +125,21 @@ namespace AzureUtilsTest
         public void FromByteArrayTest()
         {
             MemoryStream stream = new MemoryStream();
-            stream.Write(BitConverter.GetBytes(2.53F), 0, sizeof(float));
-            stream.Write(BitConverter.GetBytes(4.56F), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(2.53), 0, sizeof(double));
+            stream.Write(BitConverter.GetBytes(4.56), 0, sizeof(double));
             byte[] bytes = stream.ToArray();
 
             Point expected = new Point
             {
-                X = 2.53F,
-                Y = 4.56F
+                X = 2.53,
+                Y = 4.56
             };
             Point actual;
             actual = Point.FromByteArray(bytes);
 
-            Assert.AreEqual(expected.X, actual.X);
-            Assert.AreEqual(expected.Y, actual.Y);
+            const double Epsilon = 0.0001;
+            Assert.IsTrue(Math.Abs(expected.X - actual.X) < Epsilon);
+            Assert.IsTrue(Math.Abs(expected.Y - actual.Y) < Epsilon);
         }
 
         /// <summary>
@@ -146,16 +150,16 @@ namespace AzureUtilsTest
         {
             Point target = new Point
             {
-                X = 1.23F,
-                Y = 2.34F
+                X = 1.23,
+                Y = 2.34
             };
             
             byte[] actual;
             actual = target.ToByteArray();
 
             MemoryStream stream = new MemoryStream();
-            stream.Write(BitConverter.GetBytes(1.23F), 0, sizeof(float));
-            stream.Write(BitConverter.GetBytes(2.34F), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(1.23), 0, sizeof(double));
+            stream.Write(BitConverter.GetBytes(2.34), 0, sizeof(double));
             byte[] expected = stream.ToArray();
 
             Assert.AreEqual(expected.Length, actual.Length);

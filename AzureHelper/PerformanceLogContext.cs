@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 using Microsoft.WindowsAzure;
+using System.Data.Services.Client;
 
 namespace AzureUtils
 {
@@ -16,7 +17,7 @@ namespace AzureUtils
 
         public const string PerformanceLogTableName = "PerformanceLogTable";
 
-        public IQueryable<PerformanceLog> PerformanceLogTable
+        public DataServiceQuery<PerformanceLog> PerformanceLogTable
         {
             get
             {

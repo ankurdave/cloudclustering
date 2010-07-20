@@ -90,12 +90,14 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void FromByteArrayTest()
         {
+            const double Epsilon = 0.0001;
+
             Guid id = Guid.NewGuid();
 
             MemoryStream stream = new MemoryStream();
             stream.Write(id.ToByteArray(), 0, 16);
-            stream.Write(BitConverter.GetBytes(2.53F), 0, sizeof(float));
-            stream.Write(BitConverter.GetBytes(4.56F), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(2.53), 0, sizeof(double));
+            stream.Write(BitConverter.GetBytes(4.56), 0, sizeof(double));
             byte[] bytes = stream.ToArray();
 
             Centroid expected = new Centroid
@@ -108,8 +110,8 @@ namespace AzureUtilsTest
             actual = Centroid.FromByteArray(bytes);
 
             Assert.AreEqual(expected.ID, actual.ID);
-            Assert.AreEqual(expected.X, actual.X);
-            Assert.AreEqual(expected.Y, actual.Y);
+            Assert.IsTrue(Math.Abs(expected.X - actual.X) < Epsilon);
+            Assert.IsTrue(Math.Abs(expected.Y - actual.Y) < Epsilon);
         }
 
         /// <summary>
@@ -122,14 +124,14 @@ namespace AzureUtilsTest
             Centroid target = new Centroid
             {
                 ID = id,
-                X = 1.23F,
-                Y = 3.45F
+                X = 1.23,
+                Y = 3.45
             };
 
             MemoryStream stream = new MemoryStream();
             stream.Write(id.ToByteArray(), 0, 16);
-            stream.Write(BitConverter.GetBytes(1.23F), 0, sizeof(float));
-            stream.Write(BitConverter.GetBytes(3.45F), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(1.23), 0, sizeof(double));
+            stream.Write(BitConverter.GetBytes(3.45), 0, sizeof(double));
             byte[] expected = stream.ToArray();
 
             byte[] actual;

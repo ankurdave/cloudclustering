@@ -9,15 +9,15 @@ namespace AzureUtils
     [Serializable]
     public class Point
     {
-        public float X { get; set; }
-        public float Y { get; set; }
+        public double X { get; set; }
+        public double Y { get; set; }
 
         public Point()
         {
             X = Y = 0;
         }
 
-        public Point(float x, float y)
+        public Point(double x, double y)
         {
             this.X = x;
             this.Y = y;
@@ -36,7 +36,7 @@ namespace AzureUtils
                 p1.Y + p2.Y);
         }
 
-        public static Point operator /(Point p, float a)
+        public static Point operator /(Point p, double a)
         {
             return new Point(
                 p.X / a,
@@ -47,40 +47,40 @@ namespace AzureUtils
         {
             get
             {
-                return sizeof(int) * 2;
+                return sizeof(double) * 2;
             }
         }
         
         public virtual byte[] ToByteArray()
         {
             MemoryStream stream = new MemoryStream(Size);
-            stream.Write(BitConverter.GetBytes(X), 0, sizeof(float));
-            stream.Write(BitConverter.GetBytes(Y), 0, sizeof(float));
+            stream.Write(BitConverter.GetBytes(X), 0, sizeof(double));
+            stream.Write(BitConverter.GetBytes(Y), 0, sizeof(double));
 
             return stream.ToArray();
         }
         public static Point FromByteArray(byte[] bytes)
         {
             return new Point(
-                BitConverter.ToSingle(bytes, 0),
-                BitConverter.ToSingle(bytes, sizeof(float)));
+                BitConverter.ToDouble(bytes, 0),
+                BitConverter.ToDouble(bytes, sizeof(double)));
         }
 
-        public static float Distance(Point p1, Point p2)
+        public static double Distance(Point p1, Point p2)
         {
-            return (float)Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2));
+            return Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2));
         }
     }
 
     public static class PointExtension
     {
-        public static T MinElement<T>(this IEnumerable<T> list, Func<T, float> comparer)
+        public static T MinElement<T>(this IEnumerable<T> list, Func<T, double> comparer)
         {
             T minElement = default(T);
-            float minValue = float.MaxValue;
+            double minValue = double.MaxValue;
             foreach (T element in list)
             {
-                float value = comparer.Invoke(element);
+                double value = comparer.Invoke(element);
 
                 if (value < minValue)
                 {
