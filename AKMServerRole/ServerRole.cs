@@ -16,6 +16,8 @@ namespace AKMServerRole
 
         public override void Run()
         {
+            AzureHelper.ClearQueues();
+
             while (true)
             {
                 System.Diagnostics.Trace.TraceInformation("[ServerRole] Waiting for messages...");

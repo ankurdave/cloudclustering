@@ -191,5 +191,18 @@ namespace AzureUtils
             blob.PutBlockList(blockIDs);
             blob.FetchAttributes(); // Refresh the attributes after PutBlockList has cleared them, so that they can be relied on for later calculations
         }
+
+        public static void ClearQueues()
+        {
+            CloudQueueClient client = StorageAccount.CreateCloudQueueClient();
+            string[] queues = { ServerRequestQueue, ServerResponseQueue, WorkerRequestQueue, WorkerResponseQueue };
+
+            foreach (string queueName in queues)
+            {
+                CloudQueue queue = client.GetQueueReference(queueName);
+                queue.CreateIfNotExist();
+                queue.Clear();
+            }
+        }
     }
 }
