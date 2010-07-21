@@ -158,7 +158,7 @@ namespace AzureUtilsTest
             MemoryStream output = new MemoryStream();
             int maxBytesToCopy = 5;
             byte[] copyBuffer = new byte[2];
-            AzureHelper.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
+            AzureHelper_Accessor.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
 
             int expectedOutputLength = Math.Min(maxBytesToCopy, bytes.Length);
             Assert.AreEqual(expectedOutputLength, output.Length);
@@ -182,7 +182,7 @@ namespace AzureUtilsTest
             MemoryStream output = new MemoryStream();
             int maxBytesToCopy = 100;
             byte[] copyBuffer = new byte[2];
-            AzureHelper.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
+            AzureHelper_Accessor.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
 
             int expectedOutputLength = Math.Min(maxBytesToCopy, bytes.Length);
             Assert.AreEqual(expectedOutputLength, output.Length);

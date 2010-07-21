@@ -32,9 +32,7 @@ namespace AzureUtils
         private void ProcessPoints()
         {
             // Initialize the write blob
-            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference(task.JobID.ToString());
-            container.CreateIfNotExist();
-            CloudBlob writeBlob = container.GetBlobReference(Guid.NewGuid().ToString());
+            CloudBlob writeBlob = AzureHelper.CreateBlob(task.JobID.ToString(), Guid.NewGuid().ToString());
 
             // Do the mapping and write the new blob
             using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(task.Points), ClusterPoint.FromByteArray, ClusterPoint.Size))
@@ -44,13 +42,11 @@ namespace AzureUtils
                 TaskResult.NumPointsChanged = assignedPoints.Select(result => result.NumPointsChanged).Sum();
                 TaskResult.PointsProcessedDataByCentroid = assignedPoints.Select(result => result.PointsProcessedDataByCentroid).Aggregate(MergePointsProcessedDataByCentroid);
 
-                using (BlobStream writeStream = writeBlob.OpenWrite())
+                using (PointStream<ClusterPoint> writeStream = new PointStream<ClusterPoint>(writeBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
                 {
-                    byte[] bytes;
                     foreach (var p in assignedPoints)
                     {
-                        bytes = p.Result.ToByteArray();
-                        writeStream.Write(bytes, 0, bytes.Length);
+                        writeStream.Write(p.Result);
                     }
                 }
             }

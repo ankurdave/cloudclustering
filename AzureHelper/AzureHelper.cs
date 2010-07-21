@@ -138,7 +138,7 @@ namespace AzureUtils
             return blob;
         }
 
-        public static void CopyStreamUpToLimit(Stream input, Stream output, int maxBytesToCopy, byte[] copyBuffer)
+        private static void CopyStreamUpToLimit(Stream input, Stream output, int maxBytesToCopy, byte[] copyBuffer)
         {
             int numBytesToRead, numBytesActuallyRead, numBytesAlreadyRead = 0;
             while (true)
@@ -151,6 +151,45 @@ namespace AzureUtils
 
                 output.Write(copyBuffer, 0, numBytesActuallyRead);
             }
+        }
+
+        public static CloudBlockBlob CreateBlob(string containerName, string blobName)
+        {
+            CloudBlobContainer container = StorageAccount.CreateCloudBlobClient().GetContainerReference(containerName);
+            container.CreateIfNotExist();
+            return container.GetBlockBlobReference(blobName);
+        }
+
+        public static List<string> CopyBlobToBlocks(CloudBlob input, CloudBlockBlob output)
+        {
+            List<string> blockIDs = new List<string>();
+            using (BlobStream inputStream = input.OpenRead())
+            {
+                byte[] buffer = new byte[32768];
+
+                // Upload input as one or more blocks
+                while (inputStream.Position < inputStream.Length)
+                {
+                    using (MemoryStream blockStream = new MemoryStream())
+                    {
+                        AzureHelper.CopyStreamUpToLimit(inputStream, blockStream, AzureHelper.MaxBlockSize, buffer);
+                        blockStream.Position = 0; // Reset blockStream's position so that it can be read by PutBlock
+
+                        string blockID = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+                        output.PutBlock(blockID, blockStream, null);
+
+                        blockIDs.Add(blockID);
+                    }
+                }
+            }
+
+            return blockIDs;
+        }
+
+        public static void CommitBlockBlob(CloudBlockBlob blob, List<string> blockIDs)
+        {
+            blob.PutBlockList(blockIDs);
+            blob.FetchAttributes(); // Refresh the attributes after PutBlockList has cleared them, so that they can be relied on for later calculations
         }
     }
 }

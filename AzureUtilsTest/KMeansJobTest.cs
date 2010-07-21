@@ -188,50 +188,22 @@ namespace AzureUtilsTest
         }
 
         /// <summary>
-        ///A test for CopyPointPartition
-        ///</summary>
-        [TestMethod()]
-        [DeploymentItem("AzureHelper.dll")]
-        public void CopyPointPartitionTest()
-        {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10, DateTime.Now);
-            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
-            target.InitializeStorage();
-            int partitionNumber = 0;
-            int totalPartitions = 2;
-            CloudBlobContainer container = AzureHelper.StorageAccount.CreateCloudBlobClient().GetContainerReference("testcontainer");
-            container.CreateIfNotExist();
-            string blobName = "testblob";
-            CloudBlob partition;
-            partition = target.CopyPointPartition(target.Points, partitionNumber, totalPartitions, container, blobName);
-
-            using (BlobStream partitionStream = partition.OpenRead(),
-                pointsStream = target.Points.OpenRead())
-            {
-                Assert.AreEqual(ClusterPoint.Size * 2, partitionStream.Length);
-                while (partitionStream.Position < partitionStream.Length)
-                {
-                    Assert.AreEqual(pointsStream.ReadByte(), partitionStream.ReadByte());
-                }
-            }
-        }
-
-        /// <summary>
         ///A test for ProcessWorkerResponse
         ///</summary>
         [TestMethod()]
         public void ProcessWorkerResponseTest()
         {
-            // TODO: Add test case where completed tasks already exist in KMeansJob, and make sure things work in that case. Basically, test multiple iterations.
-
             KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10, DateTime.Now);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
             target.EnqueueTasks();
 
-            CloudBlobClient client = AzureHelper.StorageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference(jobData.JobID.ToString());
-            CloudBlob pointPartition = target.CopyPointPartition(target.Points, 0, 2, container, "testblob");
+            PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(target.Points, ClusterPoint.FromByteArray, ClusterPoint.Size);
+            CloudBlob pointPartition = AzureHelper.CreateBlob(jobData.JobID.ToString(), "testblob");
+            using (BlobStream stream = pointPartition.OpenWrite())
+            {
+                pointStream.CopyPartition(0, 2, stream);
+            }
             
             // Modify the first few bytes of the pointPartition blob, so we can verify that it got copied
             byte[] arbitraryBytes = new byte[8];
