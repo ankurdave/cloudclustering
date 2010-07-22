@@ -18,11 +18,11 @@ namespace AzureUtils
             AzureHelper.StorageAccount.CreateCloudTableClient().CreateTableIfNotExist(PerformanceLogContext.PerformanceLogTableName);
         }
 
-        public IEnumerable<PerformanceLog> PerformanceLogs
+        public DataServiceQuery<PerformanceLog> PerformanceLogs
         {
             get
             {
-                return (from log in ServiceContext.PerformanceLogTable select log).AsTableServiceQuery<PerformanceLog>().Execute();
+                return ServiceContext.PerformanceLogTable;
             }
         }
 

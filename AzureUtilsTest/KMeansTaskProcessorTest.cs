@@ -121,29 +121,37 @@ namespace AzureUtilsTest
             container.CreateIfNotExist();
             CloudBlob points = container.GetBlobReference(Guid.NewGuid().ToString());
             CloudBlob centroids = container.GetBlobReference(Guid.NewGuid().ToString());
+            const int NumPoints = 10000, NumCentroids = 10;
 
-            using (BlobStream stream = points.OpenWrite()) {
-                byte[] bytes = new ClusterPoint(1, 2, Guid.Empty).ToByteArray();
-                stream.Write(bytes, 0, bytes.Length);
-
-                bytes = new ClusterPoint(3, 4, Guid.Empty).ToByteArray();
-                stream.Write(bytes, 0, bytes.Length);
-
-                bytes = new ClusterPoint(5, 6, Guid.Empty).ToByteArray();
-                stream.Write(bytes, 0, bytes.Length);
+            using (PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
+            {
+                for (int i = 0; i < NumPoints; i++)
+                {
+                    pointStream.Write(new ClusterPoint(1, 2, Guid.Empty));
+                }
             }
+
             Guid centroidID = Guid.NewGuid();
-            using (BlobStream stream = centroids.OpenWrite()) {
-                byte[] bytes = new Centroid(Guid.NewGuid(), 1000, 1000).ToByteArray();
-                stream.Write(bytes, 0, bytes.Length);
+            using (PointStream<Centroid> stream = new PointStream<Centroid>(centroids, Centroid.FromByteArray, Centroid.Size, false))
+            {
+                stream.Write(new Centroid(centroidID, 3, 4));
 
-                bytes = new Centroid(centroidID, 3, 4).ToByteArray();
-                stream.Write(bytes, 0, bytes.Length);
+                for (int i = 0; i < NumCentroids - 1; i++)
+                {
+                    stream.Write(new Centroid(Guid.NewGuid(), 1000, 1000));
+                }
             }
 
-            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, 2, 1, 0, points.Uri, centroids.Uri, DateTime.UtcNow, DateTime.UtcNow, 0));
+            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), NumPoints, NumCentroids, 1, 0, points.Uri, centroids.Uri, DateTime.UtcNow, DateTime.UtcNow, 0));
+
+            System.Diagnostics.Trace.WriteLine("Entering InitializeCentroids");
             target.InitializeCentroids();
-            target.ProcessPoints();
+
+            System.Diagnostics.Trace.WriteLine("Entering ProcessPoints");
+            System.Diagnostics.Trace.WriteLine("ProcessPoints took " + AzureHelper.Time(() =>
+            {
+                target.ProcessPoints();
+            }).TotalSeconds + " seconds");
 
             using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(target.TaskResult.Points).OpenRead(), ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
@@ -153,13 +161,13 @@ namespace AzureUtilsTest
                 }
             }
 
-            Assert.AreEqual(3, target.TaskResult.NumPointsChanged);
+            Assert.AreEqual(NumPoints, target.TaskResult.NumPointsChanged);
             Assert.IsTrue(target.TaskResult.PointsProcessedDataByCentroid.ContainsKey(centroidID));
-            Assert.AreEqual(3, target.TaskResult.PointsProcessedDataByCentroid[centroidID].NumPointsProcessed);
+            Assert.AreEqual(NumPoints, target.TaskResult.PointsProcessedDataByCentroid[centroidID].NumPointsProcessed);
 
             const double Epsilon = 0.0001;
-            Assert.IsTrue(Math.Abs((1 + 3 + 5) - target.TaskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.X) < Epsilon);
-            Assert.IsTrue(Math.Abs((2 + 4 + 6) - target.TaskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.Y) < Epsilon);
+            Assert.IsTrue(Math.Abs((1 * NumPoints) - target.TaskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.X) < Epsilon);
+            Assert.IsTrue(Math.Abs((2 * NumPoints) - target.TaskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum.Y) < Epsilon);
         }
     }
 }

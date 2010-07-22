@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 using Microsoft.WindowsAzure.StorageClient;
+using System.Data.Services.Client;
 
 namespace AzureUtilsTest
 {
@@ -76,10 +77,11 @@ namespace AzureUtilsTest
             PerformanceLogDataSource target = new PerformanceLogDataSource();
             PerformanceLog item = new PerformanceLog("job", Guid.NewGuid().ToString(), DateTime.UtcNow, DateTime.UtcNow.AddSeconds(10));
             target.Insert(item);
-            Assert.IsTrue(target
-                .PerformanceLogs
-                .Where(log => log.PartitionKey == item.PartitionKey && log.RowKey == item.RowKey)
-                .Count() >= 1);
+            
+            var results = (target.PerformanceLogs.Where(log => log.PartitionKey == item.PartitionKey && log.RowKey == item.RowKey) as DataServiceQuery<PerformanceLog>).Execute().ToList();
+            
+            Assert.IsTrue(results.Count() >= 1);
+            Assert.AreEqual(item.PartitionKey, results.First().PartitionKey);
         }
     }
 }

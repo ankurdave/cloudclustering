@@ -6,6 +6,9 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using AzureUtils;
 using System.Text;
+using Microsoft.WindowsAzure.StorageClient;
+using System.Data.Services.Client;
+using System.IO;
 
 namespace AKMWebRole
 {
@@ -23,7 +26,9 @@ namespace AKMWebRole
             Status.Text = "Running...";
 
             Guid jobID = Guid.NewGuid();
-            Session.Add("jobID", jobID);
+            Session["jobID"] = jobID;
+            Session["lastLogRefreshTime"] = DateTime.MinValue;
+            Session["allLogs"] = new List<PerformanceLog>();
             AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, new KMeansJobData(jobID, int.Parse(N.Text), int.Parse(K.Text), int.Parse(M.Text), int.Parse(MaxIterationCount.Text), DateTime.Now));
 
             WaitForResults();
@@ -71,26 +76,26 @@ namespace AKMWebRole
             Status.Text += ".";
 
             Guid jobID = (Guid)Session["jobID"];
-
+            
             System.Diagnostics.Trace.TraceInformation("[WebRole] UpdateTimer_Tick(), JobID={0}", jobID);
 
-            UpdateStatus(jobID);
+            UpdateStatus(jobID, false);
 
             AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
                 message => ((KMeansJobResult)message).JobID == jobID,
                 ShowResults);
         }
 
-        private void UpdateStatus(Guid jobID)
+        private void UpdateStatus(Guid jobID, bool final)
         {
             System.Diagnostics.Trace.TraceInformation("[WebRole] ShowStatus(), JobID={0}", jobID);
 
-            var logs = AzureHelper.PerformanceLogger.PerformanceLogs.Where(log => log.PartitionKey == jobID.ToString()).OrderBy(log => log.StartTime);
-            if (logs.Count() == 0)
+            IEnumerable<PerformanceLog> logs = GetLogs(jobID, final);
+            if (logs == null)
                 return;
 
+            // Show all logs
             Stats.Text = string.Empty;
-
             foreach (PerformanceLog log in logs)
             {
                 Stats.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
@@ -99,10 +104,9 @@ namespace AKMWebRole
                     (log.EndTime - log.StartTime).TotalSeconds);
             }
 
+            // Show the group stats
             var logsByMethod = logs.GroupBy(log => log.MethodName);
-
             StatsSummary.Text = string.Empty;
-
             foreach (IGrouping<string, PerformanceLog> logGroup in logsByMethod)
             {
                 StatsSummary.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>",
@@ -113,7 +117,49 @@ namespace AKMWebRole
                     logGroup.Count());
             }
 
-            UpdatePointsCentroids(new Uri(logs.First().Points), new Uri(logs.First().Centroids), false);
+            try
+            {
+                UpdatePointsCentroids(
+                    AzureHelper.GetBlob(logs.First().PartitionKey, AzureHelper.PointsBlob),
+                    AzureHelper.GetBlob(logs.First().PartitionKey, AzureHelper.CentroidsBlob),
+                    false);
+            }
+            catch (StorageClientException e)
+            {
+                Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
+            }
+            catch (IOException e)
+            {
+                Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
+            }
+        }
+
+        private IEnumerable<PerformanceLog> GetLogs(Guid jobID, bool final)
+        {
+            IEnumerable<PerformanceLog> logs;
+            if (!final)
+            {
+                // Get the logs that were added since the last refresh time
+                DateTime lastLogRefreshTime = (DateTime)Session["lastLogRefreshTime"];
+                var newLogs = (AzureHelper.PerformanceLogger.PerformanceLogs.Where(log => log.PartitionKey == jobID.ToString() && log.Timestamp > lastLogRefreshTime) as DataServiceQuery<PerformanceLog>).Execute().ToList();
+                Session["lastLogRefreshTime"] = DateTime.UtcNow;
+                if (newLogs.Count() == 0)
+                    return null;
+
+                // Add these logs to allLogs
+                List<PerformanceLog> allLogs = (List<PerformanceLog>)Session["allLogs"];
+
+                allLogs.AddRange(newLogs);
+                allLogs.Sort((x, y) => x.StartTime.CompareTo(y.StartTime));
+
+                Session["allLogs"] = logs = allLogs;
+            }
+            else
+            {
+                // Get all logs in one query
+                logs = (AzureHelper.PerformanceLogger.PerformanceLogs.Where(log => log.PartitionKey == jobID.ToString()) as DataServiceQuery<PerformanceLog>).Execute().ToList().OrderBy(log => log.StartTime);
+            }
+            return logs;
         }
 
         private bool ShowResults(AzureMessage message)
@@ -125,19 +171,21 @@ namespace AKMWebRole
             StopWaitingForResults();
             Status.Text = "Done!";
 
-            UpdatePointsCentroids(jobResult.Points, jobResult.Centroids, true);
+            UpdateStatus(jobResult.JobID, true);
+            
+            UpdatePointsCentroids(AzureHelper.GetBlob(jobResult.Points), AzureHelper.GetBlob(jobResult.Centroids), true);
 
             UnfreezeUI();
             return true;
         }
 
-        private void UpdatePointsCentroids(Uri pointsUri, Uri centroidsUri, bool final)
+        private void UpdatePointsCentroids(CloudBlob points, CloudBlob centroids, bool final)
         {
             StringBuilder visualization = new StringBuilder();
             StringBuilder centroidsString = new StringBuilder();
             StringBuilder pointsString = new StringBuilder();
 
-            using (PointStream<ClusterPoint> pointsStream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(pointsUri), ClusterPoint.FromByteArray, ClusterPoint.Size))
+            using (PointStream<ClusterPoint> pointsStream = new PointStream<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
                 int pointIndex = 0;
                 foreach (ClusterPoint p in pointsStream)
@@ -154,7 +202,7 @@ namespace AKMWebRole
                 }
             }
 
-            using (PointStream<Centroid> centroidsStream = new PointStream<Centroid>(AzureHelper.GetBlob(centroidsUri), Centroid.FromByteArray, Centroid.Size))
+            using (PointStream<Centroid> centroidsStream = new PointStream<Centroid>(centroids, Centroid.FromByteArray, Centroid.Size))
             {
                 foreach (Centroid p in centroidsStream)
                 {

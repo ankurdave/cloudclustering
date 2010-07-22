@@ -160,6 +160,12 @@ namespace AzureUtils
             return container.GetBlockBlobReference(blobName);
         }
 
+        public static CloudBlob GetBlob(string containerName, string blobName)
+        {
+            CloudBlobContainer container = StorageAccount.CreateCloudBlobClient().GetContainerReference(containerName);
+            return container.GetBlobReference(blobName);
+        }
+
         public static List<string> CopyBlobToBlocks(CloudBlob input, CloudBlockBlob output)
         {
             List<string> blockIDs = new List<string>();
@@ -203,6 +209,14 @@ namespace AzureUtils
                 queue.CreateIfNotExist();
                 queue.Clear();
             }
+        }
+
+        public static TimeSpan Time(Action action)
+        {
+            DateTime start = DateTime.Now;
+            action.Invoke();
+            DateTime end = DateTime.Now;
+            return end - start;
         }
     }
 }

@@ -269,8 +269,8 @@ namespace AzureUtils
                 }
             }
 
-            // Change Centroids to refer to the new blob
-            Centroids = writeBlob;
+            // Copy the contents of the new blob back into the old blob
+            Centroids.CopyFromBlob(writeBlob);
 
             ResetPointChangedCounts();
 
