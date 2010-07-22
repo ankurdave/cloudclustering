@@ -12,12 +12,21 @@ namespace AzureUtils
         private Stream stream;
         private Func<byte[], T> pointDeserializer;
         private int pointSize;
+        private long startByte = 0;
+        private long endByte = long.MaxValue;
+
+        public PointStream(CloudBlob pointBlob, Func<byte[], T> pointDeserializer, int pointSize, int partitionNumber, int totalPartitions, bool read = true)
+            : this(pointBlob, pointDeserializer, pointSize, read)
+        {
+            long numPoints = NumPointsInStream();
+            long partitionLength = PartitionLength(numPoints, totalPartitions);
+            this.startByte = partitionNumber * partitionLength;
+            this.endByte = startByte + partitionLength;
+        }
 
         public PointStream(CloudBlob pointBlob, Func<byte[], T> pointDeserializer, int pointSize, bool read = true)
+            : this(read ? pointBlob.OpenRead() : pointBlob.OpenWrite(), pointDeserializer, pointSize)
         {
-            this.stream = read ? pointBlob.OpenRead() : pointBlob.OpenWrite();
-            this.pointDeserializer = pointDeserializer;
-            this.pointSize = pointSize;
         }
 
         public PointStream(Stream stream, Func<byte[], T> pointDeserializer, int pointSize)
@@ -34,17 +43,22 @@ namespace AzureUtils
                 throw new NotSupportedException();
             }
 
-            stream.Position = 0;
+            stream.Position = startByte;
             byte[] bytes = new byte[pointSize];
-            while (stream.Position + pointSize <= stream.Length)
+            while (stream.Position + pointSize <= endByte)
             {
-                int bytesRead = stream.Read(bytes, 0, bytes.Length);
+                stream.Read(bytes, 0, bytes.Length);
                 yield return pointDeserializer.Invoke(bytes);
             }
         }
 
         public void Write(T point)
         {
+            if (!stream.CanWrite)
+            {
+                throw new NotSupportedException();
+            }
+
             byte[] bytes = point.ToByteArray();
             stream.Write(bytes, 0, bytes.Length);
         }

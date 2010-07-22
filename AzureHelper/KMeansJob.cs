@@ -78,18 +78,9 @@ namespace AzureUtils
 
             using (PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
-
                 for (int i = 0; i < jobData.M; i++)
                 {
-                    Guid taskID = Guid.NewGuid();
-                    
-                    CloudBlob pointPartition = AzureHelper.CreateBlob(jobData.JobID.ToString(), taskID.ToString());
-                    using (BlobStream pointPartitionStream = pointPartition.OpenWrite())
-                    {
-                        pointStream.CopyPartition(i, jobData.M, pointPartitionStream);
-                    }
-
-                    KMeansTaskData taskData = new KMeansTaskData(jobData, taskID, pointPartition.Uri, Centroids.Uri, start, IterationCount);
+                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), Points.Uri, i, Centroids.Uri, start, IterationCount);
 
                     tasks.Add(new KMeansTask(taskData));
 

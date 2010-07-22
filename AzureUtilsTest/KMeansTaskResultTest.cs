@@ -71,7 +71,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void SavePointsProcessedDataByCentroidTest()
         {
-            KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, 2, 3, 10, null, null, DateTime.Now, DateTime.Now, 0);
+            KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, 2, 3, 10, null, 0, null, DateTime.Now, DateTime.Now, 0);
             KMeansTaskResult target = new KMeansTaskResult(task);
             target.PointsProcessedDataByCentroid[Guid.NewGuid()] = new PointsProcessedData()
             {
