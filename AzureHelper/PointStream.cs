@@ -12,16 +12,16 @@ namespace AzureUtils
         private Stream stream;
         private Func<byte[], T> pointDeserializer;
         private int pointSize;
-        private long startByte = 0;
-        private long endByte = long.MaxValue;
+        private long startByte;
+        private long endByte;
 
-        public PointStream(CloudBlob pointBlob, Func<byte[], T> pointDeserializer, int pointSize, int partitionNumber, int totalPartitions, bool read = true)
-            : this(pointBlob, pointDeserializer, pointSize, read)
+        public PointStream(CloudBlob pointBlob, Func<byte[], T> pointDeserializer, int pointSize, int partitionNumber, int totalPartitions)
+            : this(pointBlob, pointDeserializer, pointSize)
         {
             long numPoints = NumPointsInStream();
             long partitionLength = PartitionLength(numPoints, totalPartitions);
             this.startByte = partitionNumber * partitionLength;
-            this.endByte = startByte + partitionLength;
+            this.endByte = Math.Min(startByte + partitionLength, stream.Length);
         }
 
         public PointStream(CloudBlob pointBlob, Func<byte[], T> pointDeserializer, int pointSize, bool read = true)
@@ -34,6 +34,9 @@ namespace AzureUtils
             this.stream = stream;
             this.pointDeserializer = pointDeserializer;
             this.pointSize = pointSize;
+
+            this.startByte = 0;
+            this.endByte = stream.Length;
         }
 
         public IEnumerator<T> GetEnumerator()

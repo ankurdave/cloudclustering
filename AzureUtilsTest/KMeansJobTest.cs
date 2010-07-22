@@ -322,10 +322,6 @@ namespace AzureUtilsTest
             // Make sure there are enough taskDatas in the list
             Assert.AreEqual(expectedNumRequests, taskDataList.Count());
             Assert.IsTrue(taskDataList.Where(element => element == null).Count() == 0);
-
-            // Make sure the lengths of all the point partition blobs add up to the length of the points blob
-            Assert.AreEqual(pointsBlob.Properties.Length,
-                taskDataList.Sum(element => AzureHelper.GetBlob(element.Points).Properties.Length));
         }
 
         private static List<KMeansTaskData> GetKMeansTasksFromWorkerRequestQueue(int numQueueMessages)
