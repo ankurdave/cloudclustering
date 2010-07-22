@@ -36,18 +36,37 @@ namespace AzureUtils
             CloudBlob writeBlob = AzureHelper.CreateBlob(task.JobID.ToString(), Guid.NewGuid().ToString());
 
             // Do the mapping and write the new blob
+            // Note: Using PLINQ is actually a bit slower than ClusterPoint.MapByteStream, at least on my dual-core laptop (9 seconds vs 8 seconds for 10,000 points and 10 centroids).
+            // TODO: Test this on a bigger Azure VM. Still, I suspect that PLINQ will always be slower because IO is the bottleneck anyway.
             using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(task.Points), ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
                 var assignedPoints = stream.AsParallel().Select(AssignClusterPointToNearestCentroid);
 
-                TaskResult.NumPointsChanged = assignedPoints.Select(result => result.NumPointsChanged).Sum();
-                TaskResult.PointsProcessedDataByCentroid = assignedPoints.Select(result => result.PointsProcessedDataByCentroid).Aggregate(MergePointsProcessedDataByCentroid);
-
+                TaskResult.NumPointsChanged = 0;
+                TaskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
                 using (PointStream<ClusterPoint> writeStream = new PointStream<ClusterPoint>(writeBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
                 {
-                    foreach (var p in assignedPoints)
+                    object numPointsChangedLock = new object();
+
+                    foreach (var result in assignedPoints)
                     {
-                        writeStream.Write(p.Result);
+                        // Write the point to the new blob
+                        writeStream.Write(result.Point);
+
+                        // Update the number of points changed counter
+                        if (result.PointWasChanged)
+                        {
+                            TaskResult.NumPointsChanged++;
+                        }
+
+                        // Add to the appropriate centroid group
+                        if (!TaskResult.PointsProcessedDataByCentroid.ContainsKey(result.Point.CentroidID))
+                        {
+                            TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID] = new PointsProcessedData();
+                        }
+
+                        TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].NumPointsProcessed++;
+                        TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].PartialPointSum += result.Point;
                     }
                 }
             }
@@ -74,21 +93,14 @@ namespace AzureUtils
 
         private ClusterPointProcessingResult AssignClusterPointToNearestCentroid(ClusterPoint clusterPoint)
         {
+            // TODO: Try in-place modification to see the performance impact
             ClusterPoint result = new ClusterPoint(clusterPoint);
             result.CentroidID = centroids.MinElement(centroid => Point.Distance(clusterPoint, centroid)).ID;
 
-            int numPointsChanged = (clusterPoint.CentroidID != result.CentroidID) ? 1 : 0;
-
-            Dictionary<Guid, PointsProcessedData> pointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
-            pointsProcessedDataByCentroid[result.CentroidID] = new PointsProcessedData();
-            pointsProcessedDataByCentroid[result.CentroidID].NumPointsProcessed++;
-            pointsProcessedDataByCentroid[result.CentroidID].PartialPointSum += result;
-
             return new ClusterPointProcessingResult
             {
-                Result = result,
-                NumPointsChanged = numPointsChanged,
-                PointsProcessedDataByCentroid = pointsProcessedDataByCentroid
+                Point = result,
+                PointWasChanged = clusterPoint.CentroidID != result.CentroidID
             };
         }
 
@@ -103,8 +115,7 @@ namespace AzureUtils
 
     class ClusterPointProcessingResult
     {
-        public ClusterPoint Result { get; set; }
-        public int NumPointsChanged { get; set; }
-        public Dictionary<Guid, PointsProcessedData> PointsProcessedDataByCentroid { get; set; }
+        public ClusterPoint Point { get; set; }
+        public bool PointWasChanged { get; set; }
     }
 }

@@ -107,7 +107,7 @@ namespace AzureUtilsTest
             ClusterPointProcessingResult_Accessor actual;
             actual = target.AssignClusterPointToNearestCentroid(clusterPoint);
 
-            Assert.AreEqual(expected.CentroidID, actual.Result.CentroidID);
+            Assert.AreEqual(expected.CentroidID, actual.Point.CentroidID);
         }
 
         /// <summary>
