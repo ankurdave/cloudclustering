@@ -36,8 +36,6 @@ namespace AzureUtils
             CloudBlob writeBlob = AzureHelper.CreateBlob(task.JobID.ToString(), Guid.NewGuid().ToString());
 
             // Do the mapping and write the new blob
-            // Note: Using PLINQ is actually a bit slower than ClusterPoint.MapByteStream, at least on my dual-core laptop (9 seconds vs 8 seconds for 10,000 points and 10 centroids).
-            // TODO: Test this on a bigger Azure VM. Still, I suspect that PLINQ will always be slower because IO is the bottleneck anyway.
             using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(task.Points), ClusterPoint.FromByteArray, ClusterPoint.Size, task.PartitionNumber, task.M))
             {
                 var assignedPoints = stream.AsParallel().Select(AssignClusterPointToNearestCentroid);

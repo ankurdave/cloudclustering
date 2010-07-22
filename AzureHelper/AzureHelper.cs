@@ -81,7 +81,9 @@ namespace AzureUtils
             }
             catch (StorageServerException e)
             {
-                return false;
+                //System.Diagnostics.Trace.WriteLine("Failed to get queue message: " + e);
+                //return false;
+                throw;
             }
 
             if (queueMessage == null)
@@ -95,7 +97,24 @@ namespace AzureUtils
             if (!action.Invoke(message))
                 return false;
 
-            queue.DeleteMessage(queueMessage);
+            try
+            {
+                queue.DeleteMessage(queueMessage);
+            }
+            catch (StorageClientException e)
+            {
+                // It took too long to process the message and the visibility timeout expired
+                // See http://blog.smarx.com/posts/deleting-windows-azure-queue-messages-handling-exceptions
+                if (e.ExtendedErrorInformation.ErrorCode == "MessageNotFound")
+                {
+                    System.Diagnostics.Trace.WriteLine("Visibility timeout expired: " + e);
+                    return false;
+                }
+                else
+                {
+                    throw;
+                }
+            }
 
             return true;
         }
