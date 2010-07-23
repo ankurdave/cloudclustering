@@ -25,6 +25,7 @@
             </p>
             
             <p><asp:Button ID="Run" runat="server" onclick="Run_Click" Text="Run K-Means" /></p>
+            <p><asp:Button ID="ClearBlobs" runat="server" onclick="ClearBlobs_Click" Text="Clear Blobs" /></p>
 
             <div style="float:right">
                 <p><strong>Status:</strong> <asp:Label ID="Status" runat="server" Text="Click Run K-Means to see results."></asp:Label></p>

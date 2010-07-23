@@ -84,7 +84,7 @@ namespace AzureUtils
 
                     tasks.Add(new KMeansTask(taskData));
 
-                    AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData);
+                    AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData, true);
                 }
             }
 

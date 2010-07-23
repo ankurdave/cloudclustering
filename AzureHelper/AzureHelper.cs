@@ -61,12 +61,21 @@ namespace AzureUtils
             }
         }
 
-        public static void EnqueueMessage(string queueName, AzureMessage message)
+        public static void EnqueueMessage(string queueName, AzureMessage message, bool async = false)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
             queue.CreateIfNotExist();
 
-            queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
+            CloudQueueMessage queueMessage = new CloudQueueMessage(message.ToBinary());
+
+            if (async)
+            {
+                queue.BeginAddMessage(queueMessage, ar => { }, null);
+            }
+            else
+            {
+                queue.AddMessage(queueMessage);
+            }
         }
 
         public static bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)

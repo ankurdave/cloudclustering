@@ -121,7 +121,7 @@ namespace AzureUtilsTest
             container.CreateIfNotExist();
             CloudBlob points = container.GetBlobReference(Guid.NewGuid().ToString());
             CloudBlob centroids = container.GetBlobReference(Guid.NewGuid().ToString());
-            const int NumPoints = 10000, NumCentroids = 10;
+            const int NumPoints = 1000000, NumCentroids = 10;
 
             using (PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
             {

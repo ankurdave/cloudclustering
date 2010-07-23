@@ -46,6 +46,7 @@ namespace AzureUtils
                 {
                     object numPointsChangedLock = new object();
 
+                    // Pipelined execution -- see http://msdn.microsoft.com/en-us/magazine/cc163329.aspx
                     foreach (var result in assignedPoints)
                     {
                         // Write the point to the new blob

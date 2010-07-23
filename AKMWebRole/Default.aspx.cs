@@ -16,7 +16,21 @@ namespace AKMWebRole
     {
         protected void Page_Load(object sender, EventArgs e)
         {
+        }
 
+        private void DeleteAllBlobs()
+        {
+            foreach (CloudBlobContainer container in AzureHelper.StorageAccount.CreateCloudBlobClient().ListContainers())
+            {
+                System.Diagnostics.Trace.Write("Deleting container " + container.Name + "... ");
+                container.BeginDelete((ar) => { }, null);
+                System.Diagnostics.Trace.WriteLine("done.");
+            }
+        }
+
+        protected void ClearBlobs_Click(object sender, EventArgs e)
+        {
+            DeleteAllBlobs();
         }
 
         protected void Run_Click(object sender, EventArgs e)
@@ -90,8 +104,9 @@ namespace AKMWebRole
         {
             System.Diagnostics.Trace.TraceInformation("[WebRole] ShowStatus(), JobID={0}", jobID);
 
-            IEnumerable<PerformanceLog> logs = GetLogs(jobID, final);
-            if (logs == null)
+            IEnumerable<PerformanceLog> logs;
+            logs = GetLogs(jobID, true);
+            if (logs == null || logs.Count() == 0)
                 return;
 
             // Show all logs
@@ -141,7 +156,9 @@ namespace AKMWebRole
             {
                 // Get the logs that were added since the last refresh time
                 DateTime lastLogRefreshTime = (DateTime)Session["lastLogRefreshTime"];
-                var newLogs = (AzureHelper.PerformanceLogger.PerformanceLogs.Where(log => log.PartitionKey == jobID.ToString() && log.Timestamp > lastLogRefreshTime) as DataServiceQuery<PerformanceLog>).Execute().ToList();
+                var newLogs = (AzureHelper.PerformanceLogger.PerformanceLogs.Where(log => log.PartitionKey == jobID.ToString()
+                    && log.Timestamp > lastLogRefreshTime // Causes DataServiceQueryException, for some reason!
+                    ) as DataServiceQuery<PerformanceLog>).Execute().ToList();
                 Session["lastLogRefreshTime"] = DateTime.UtcNow;
                 if (newLogs.Count() == 0)
                     return null;
