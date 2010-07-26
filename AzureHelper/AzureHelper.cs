@@ -83,17 +83,8 @@ namespace AzureUtils
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
 
             CloudQueueMessage queueMessage;
-            try
-            {
-                queue.CreateIfNotExist();
-                queueMessage = queue.GetMessage();
-            }
-            catch (StorageServerException e)
-            {
-                //System.Diagnostics.Trace.WriteLine("Failed to get queue message: " + e);
-                //return false;
-                throw;
-            }
+            queue.CreateIfNotExist();
+            queueMessage = queue.GetMessage();
 
             if (queueMessage == null)
                 return false;
