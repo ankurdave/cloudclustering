@@ -74,7 +74,7 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void AssignClusterPointToNearestCentroidTest()
         {
-            KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, 2, 3, 10, null, 0, null, DateTime.Now, DateTime.Now, 0);
+            KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, null, 2, 3, 10, 0, null, DateTime.Now, DateTime.Now, 0);
             KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(task);
 
             target.centroids = new List<Centroid>();
@@ -121,7 +121,7 @@ namespace AzureUtilsTest
             container.CreateIfNotExist();
             CloudBlob points = container.GetBlobReference(Guid.NewGuid().ToString());
             CloudBlob centroids = container.GetBlobReference(Guid.NewGuid().ToString());
-            const int NumPoints = 1000000, NumCentroids = 10;
+            const int NumPoints = 10000, NumCentroids = 10;
 
             using (PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
             {
@@ -142,7 +142,7 @@ namespace AzureUtilsTest
                 }
             }
 
-            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), NumPoints, NumCentroids, 1, 0, points.Uri, 0, centroids.Uri, DateTime.UtcNow, DateTime.UtcNow, 0));
+            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), NumPoints, points.Uri, NumCentroids, 1, 0, 0, centroids.Uri, DateTime.UtcNow, DateTime.UtcNow, 0));
 
             System.Diagnostics.Trace.WriteLine("Entering InitializeCentroids");
             target.InitializeCentroids();

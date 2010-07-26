@@ -13,6 +13,8 @@
             <p>
                 Points (n):
                 <asp:TextBox ID="N" runat="server"></asp:TextBox>
+                &nbsp;or Points File:
+                <asp:FileUpload ID="PointsFile" runat="server" />
                 <br />
                 Clusters (k):
                 <asp:TextBox ID="K" runat="server"></asp:TextBox>
@@ -21,8 +23,8 @@
                 <asp:TextBox ID="M" runat="server"></asp:TextBox>
                 <br />
                 Max iterations:
-                <asp:TextBox ID="MaxIterationCount" runat="server"></asp:TextBox>
-            </p>
+                <asp:TextBox ID="MaxIterationCount" runat="server">0</asp:TextBox>
+                &nbsp;(0 is unlimited)</p>
             
             <p><asp:Button ID="Run" runat="server" onclick="Run_Click" Text="Run K-Means" /></p>
             <p><asp:Button ID="ClearBlobs" runat="server" onclick="ClearBlobs_Click" Text="Clear Blobs" /></p>
@@ -45,6 +47,9 @@
                 ontick="UpdateTimer_Tick">
             </asp:Timer>
         </ContentTemplate>
+        <Triggers>
+            <asp:PostBackTrigger ControlID="Run" />
+        </Triggers>
     </asp:UpdatePanel>
     <p>
         &nbsp;</p>

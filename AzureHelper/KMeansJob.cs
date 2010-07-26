@@ -35,17 +35,25 @@ namespace AzureUtils
             DateTime start = DateTime.UtcNow;
             Random random = new Random();
 
-            // Initialize the points blob with N random ClusterPoints
-            Points = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.PointsBlob);
-            using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
+            if (jobData.Points == null)
             {
-                for (int i = 0; i < jobData.N; i++)
+                // Initialize the points blob with N random ClusterPoints
+                Points = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.PointsBlob);
+                using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
                 {
-                    stream.Write(new ClusterPoint(
-                        random.NextDouble() * 100 - 50,
-                        random.NextDouble() * 100 - 50,
-                        Guid.Empty));
+                    for (int i = 0; i < jobData.N; i++)
+                    {
+                        stream.Write(new ClusterPoint(
+                            random.NextDouble() * 100 - 50,
+                            random.NextDouble() * 100 - 50,
+                            Guid.Empty));
+                    }
                 }
+            }
+            else
+            {
+                // Use the given points blob
+                Points = AzureHelper.GetBlob(jobData.Points);
             }
             
             // Initialize the centroids blob with K random Centroids
@@ -80,7 +88,8 @@ namespace AzureUtils
             {
                 for (int i = 0; i < jobData.M; i++)
                 {
-                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), Points.Uri, i, Centroids.Uri, start, IterationCount);
+                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, start, IterationCount);
+                    taskData.Points = Points.Uri;
 
                     tasks.Add(new KMeansTask(taskData));
 
@@ -287,7 +296,7 @@ namespace AzureUtils
         {
             System.Diagnostics.Trace.TraceInformation("[ServerRole] ReturnResults() JobID={0}", jobData.JobID);
 
-            KMeansJobResult jobResult = new KMeansJobResult(jobData, Points.Uri, Centroids.Uri);
+            KMeansJobResult jobResult = new KMeansJobResult(jobData, Centroids.Uri);
             AzureHelper.EnqueueMessage(AzureHelper.ServerResponseQueue, jobResult);
             // TODO: Delete this KMeansJob from the list of jobs in ServerRole
         }

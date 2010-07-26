@@ -10,20 +10,17 @@ namespace AzureUtils
     [Serializable]
     public class KMeansJobResult : KMeansJobData
     {
-        public Uri Points { get; set; }
         public Uri Centroids { get; set; }
 
-        public KMeansJobResult(Guid jobID, int n, int k, int m, int maxIterationCount, Uri points, Uri centroids, DateTime jobStartTime)
-            : base(jobID, n, k, m, maxIterationCount, jobStartTime)
+        public KMeansJobResult(Guid jobID, int n, Uri points, int k, int m, int maxIterationCount, Uri centroids, DateTime jobStartTime)
+            : base(jobID, n, points, k, m, maxIterationCount, jobStartTime)
         {
-            this.Points = points;
             this.Centroids = centroids;
         }
 
-        public KMeansJobResult(KMeansJobData jobData, Uri points, Uri centroids)
+        public KMeansJobResult(KMeansJobData jobData, Uri centroids)
             : base(jobData)
         {
-            this.Points = points;
             this.Centroids = centroids;
         }
     }

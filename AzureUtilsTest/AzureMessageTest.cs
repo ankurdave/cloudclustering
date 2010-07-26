@@ -71,7 +71,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void ToFromBinaryTest()
         {
-            KMeansJobData target = new KMeansJobData(Guid.NewGuid(), 1, 2, 3, 10, DateTime.Now);
+            KMeansJobData target = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 3, 10, DateTime.Now);
             byte[] bytes = target.ToBinary();
             KMeansJobData targetNew = KMeansJobData.FromMessage<KMeansJobData>(new CloudQueueMessage(bytes));
 

@@ -75,7 +75,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void InitializeStorageTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, 4, 6, 10, DateTime.Now);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, null, 4, 6, 10, DateTime.Now);
             KMeansJob target = new KMeansJob(jobData);
             target.InitializeStorage();
             
@@ -156,7 +156,7 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void RecalculateCentroidsTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, 1, 1, 10, DateTime.Now);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, null, 1, 1, 10, DateTime.Now);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
 
@@ -193,7 +193,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void ProcessWorkerResponseTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 10, DateTime.Now);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 2, 10, DateTime.Now);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
             target.EnqueueTasks();
@@ -213,9 +213,12 @@ namespace AzureUtilsTest
                 pointPartitionWriteStream.Write(arbitraryBytes, 0, arbitraryBytes.Length);
             }
 
-            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), pointPartition.Uri, 0, target.Centroids.Uri, DateTime.Now, 0);
+            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), 0, target.Centroids.Uri, DateTime.Now, 0);
+            taskData.Points = pointPartition.Uri;
+
             target.tasks.Clear();
             target.tasks.Add(new KMeansTask(taskData));
+            
             KMeansTaskResult taskResult = new KMeansTaskResult(taskData);
             taskResult.NumPointsChanged = 2;
             Guid centroidID = Guid.NewGuid();
@@ -285,7 +288,7 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void MultiIterationJobTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, 2, 2, 2, DateTime.Now);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 2, 2, DateTime.Now);
             KMeansJob_Accessor job = new KMeansJob_Accessor(jobData);
             
             // First iteration
