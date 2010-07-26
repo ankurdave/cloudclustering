@@ -13,8 +13,9 @@
     <div class="page">
         <div class="header">
             <div class="title">
-                <h1>
-                    My ASP.NET Application
+                <h1 style="line-height:1em; text-transform:none">
+                    Cloud Clustering<br />
+                    <span style="font-size:50%">Ankur Dave</span>
                 </h1>
             </div>
             <div class="loginDisplay">

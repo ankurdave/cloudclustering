@@ -38,6 +38,7 @@ namespace AKMWebRole
             FreezeUI();
             ClearIndicators();
             Status.Text = "Running...";
+            UpdatePanel1.Update();
 
             Guid jobID = Guid.NewGuid();
             Session["jobID"] = jobID;
@@ -88,12 +89,14 @@ namespace AKMWebRole
         protected void UpdateTimer_Tick(object sender, EventArgs e)
         {
             Status.Text += ".";
+            UpdatePanel1.Update();
 
             Guid jobID = (Guid)Session["jobID"];
             
             System.Diagnostics.Trace.TraceInformation("[WebRole] UpdateTimer_Tick(), JobID={0}", jobID);
 
             UpdateStatus(jobID, false);
+            UpdatePanel1.Update();
 
             AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
                 message => ((KMeansJobResult)message).JobID == jobID,
@@ -193,6 +196,8 @@ namespace AKMWebRole
             UpdatePointsCentroids(AzureHelper.GetBlob(jobResult.Points), AzureHelper.GetBlob(jobResult.Centroids), true);
 
             UnfreezeUI();
+            UpdatePanel1.Update();
+
             return true;
         }
 

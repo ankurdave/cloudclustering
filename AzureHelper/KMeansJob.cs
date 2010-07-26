@@ -167,14 +167,18 @@ namespace AzureUtils
 
             IterationCount++;
 
-            if (NumPointsChangedAboveThreshold() && !MaxIterationCountExceeded())
+            if (NumPointsChangedAboveThreshold())
             {
                 RecalculateCentroids();
-                EnqueueTasks();
-            }
-            else
-            {
-                ReturnResults();
+
+                if (!MaxIterationCountExceeded())
+                {
+                    EnqueueTasks();
+                }
+                else
+                {
+                    ReturnResults();
+                }
             }
         }
 
