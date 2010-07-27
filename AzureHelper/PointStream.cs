@@ -18,8 +18,7 @@ namespace AzureUtils
         public PointStream(CloudBlob pointBlob, Func<byte[], T> pointDeserializer, int pointSize, int partitionNumber, int totalPartitions)
             : this(pointBlob, pointDeserializer, pointSize)
         {
-            long numPoints = NumPointsInStream();
-            long partitionLength = PartitionLength(numPoints, totalPartitions);
+            long partitionLength = PartitionLength(Length, totalPartitions);
             this.startByte = partitionNumber * partitionLength;
             this.endByte = Math.Min(startByte + partitionLength, stream.Length);
         }
@@ -79,7 +78,7 @@ namespace AzureUtils
         public void CopyPartition(int partitionNumber, int totalPartitions, Stream output)
         {
             // Calculate what portion of points to read
-            long numPoints = NumPointsInStream();
+            long numPoints = Length;
             long partitionLength = PartitionLength(numPoints, totalPartitions);
             long startByte = partitionNumber * partitionLength;
 
@@ -97,9 +96,12 @@ namespace AzureUtils
             return (long)Math.Ceiling((double)numPoints / numPartitions) * pointSize;
         }
 
-        private long NumPointsInStream()
+        public long Length
         {
-            return stream.Length / pointSize;
+            get
+            {
+                return stream.Length / pointSize;
+            }
         }
     }
 }

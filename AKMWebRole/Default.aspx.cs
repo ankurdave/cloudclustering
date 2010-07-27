@@ -45,17 +45,24 @@ namespace AKMWebRole
             Session["lastLogRefreshTime"] = DateTime.MinValue;
             Session["allLogs"] = new List<PerformanceLog>();
 
-            CloudBlob pointsBlob = null;
+            Uri pointsBlobUri = null;
             if (PointsFile.HasFile)
             {
-                pointsBlob = AzureHelper.CreateBlob(jobID.ToString(), AzureHelper.PointsBlob);
+                CloudBlob pointsBlob = AzureHelper.CreateBlob(jobID.ToString(), AzureHelper.PointsBlob);
                 using (BlobStream stream = pointsBlob.OpenWrite())
                 {
                     PointsFile.FileContent.CopyTo(stream);
                 }
+                pointsBlobUri = pointsBlob.Uri;
             }
-            
-            KMeansJobData jobData = new KMeansJobData(jobID, int.Parse(N.Text), pointsBlob.Uri, int.Parse(K.Text), int.Parse(M.Text), int.Parse(MaxIterationCount.Text), DateTime.Now);
+
+            int nInt = 0, kInt = 0, mInt = 0, maxIterationCountInt = 0;
+            int.TryParse(N.Text, out nInt);
+            int.TryParse(K.Text, out kInt);
+            int.TryParse(M.Text, out mInt);
+            int.TryParse(MaxIterationCount.Text, out maxIterationCountInt);
+
+            KMeansJobData jobData = new KMeansJobData(jobID, nInt, pointsBlobUri, kInt, mInt, maxIterationCountInt, DateTime.Now);
             AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, jobData);
 
             WaitForResults();

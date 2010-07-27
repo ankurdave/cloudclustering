@@ -54,6 +54,12 @@ namespace AzureUtils
             {
                 // Use the given points blob
                 Points = AzureHelper.GetBlob(jobData.Points);
+
+                // Initialize N based on that
+                using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
+                {
+                    jobData.N = (int)stream.Length;
+                }
             }
             
             // Initialize the centroids blob with K random Centroids
@@ -90,6 +96,7 @@ namespace AzureUtils
                 {
                     KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, start, IterationCount);
                     taskData.Points = Points.Uri;
+                    throw new Exception();
 
                     tasks.Add(new KMeansTask(taskData));
 
@@ -297,6 +304,7 @@ namespace AzureUtils
             System.Diagnostics.Trace.TraceInformation("[ServerRole] ReturnResults() JobID={0}", jobData.JobID);
 
             KMeansJobResult jobResult = new KMeansJobResult(jobData, Centroids.Uri);
+            jobResult.Points = Points.Uri;
             AzureHelper.EnqueueMessage(AzureHelper.ServerResponseQueue, jobResult);
             // TODO: Delete this KMeansJob from the list of jobs in ServerRole
         }
