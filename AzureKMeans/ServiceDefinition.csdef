@@ -9,7 +9,7 @@
       <Setting name="DataConnectionString" />
     </ConfigurationSettings>
   </WebRole>
-  <WorkerRole name="AKMWorkerRole">
+  <WorkerRole name="AKMWorkerRole" vmsize="Large">
     <ConfigurationSettings>
       <Setting name="DiagnosticsConnectionString" />
       <Setting name="DataConnectionString" />
