@@ -37,10 +37,12 @@ namespace AKMWebRole
         {
             FreezeUI();
             ClearIndicators();
-            Status.Text = "Running...";
+            Guid jobID = Guid.NewGuid();
+            Status.Text = string.Format("Running job {0}.", jobID);
+            DownloadLog.NavigateUrl = string.Format("Log.aspx?JobID={0}", jobID);
+            DownloadLog.Enabled = true;
             UpdatePanel1.Update();
 
-            Guid jobID = Guid.NewGuid();
             Session["jobID"] = jobID;
             Session["lastLogRefreshTime"] = DateTime.MinValue;
             Session["allLogs"] = new List<PerformanceLog>();
@@ -74,7 +76,10 @@ namespace AKMWebRole
             Points.Text = "";
             Centroids.Text = "";
             Status.Text = "";
+            StatusProgress.Text = "";
             Stats.Text = "";
+            DownloadLog.Enabled = false;
+            DownloadLog.NavigateUrl = "";
         }
 
         private void FreezeUnfreezeUI(bool freeze = true)
@@ -107,14 +112,16 @@ namespace AKMWebRole
 
         protected void UpdateTimer_Tick(object sender, EventArgs e)
         {
-            Status.Text += ".";
-            UpdatePanel1.Update();
+            StatusProgress.Text += ".";
+            if (StatusProgress.Text.Length > 3)
+            {
+                StatusProgress.Text = "";
+            }
 
             Guid jobID = (Guid)Session["jobID"];
-            
             System.Diagnostics.Trace.TraceInformation("[WebRole] UpdateTimer_Tick(), JobID={0}", jobID);
-
             UpdateStatus(jobID, false);
+
             UpdatePanel1.Update();
 
             AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
@@ -209,6 +216,7 @@ namespace AKMWebRole
 
             StopWaitingForResults();
             Status.Text = "Done!";
+            StatusProgress.Text = "";
 
             UpdateStatus(jobResult.JobID, true);
             

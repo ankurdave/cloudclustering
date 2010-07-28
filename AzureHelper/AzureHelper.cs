@@ -78,13 +78,13 @@ namespace AzureUtils
             }
         }
 
-        public static bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action)
+        public static bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int visibilityTimeoutSeconds = 30)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
 
             CloudQueueMessage queueMessage;
             queue.CreateIfNotExist();
-            queueMessage = queue.GetMessage();
+            queueMessage = queue.GetMessage(new TimeSpan(0, 0, visibilityTimeoutSeconds));
 
             if (queueMessage == null)
                 return false;
@@ -135,11 +135,11 @@ namespace AzureUtils
             }
         }
 
-        public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 500, int iterationLimit = 0)
+        public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 500, int iterationLimit = 0, int visibilityTimeoutSeconds = 30)
         {
             for (int i = 0; iterationLimit == 0 || i < iterationLimit; i++)
             {
-                if (PollForMessage(queueName, condition, action))
+                if (PollForMessage(queueName, condition, action, visibilityTimeoutSeconds))
                 {
                     break;
                 }
