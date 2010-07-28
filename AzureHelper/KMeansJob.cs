@@ -96,7 +96,6 @@ namespace AzureUtils
                 {
                     KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, start, IterationCount);
                     taskData.Points = Points.Uri;
-                    throw new Exception();
 
                     tasks.Add(new KMeansTask(taskData));
 
