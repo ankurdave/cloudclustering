@@ -21,8 +21,8 @@ namespace AKMServerRole
             while (true)
             {
                 System.Diagnostics.Trace.TraceInformation("[ServerRole] Waiting for messages...");
-                AzureHelper.PollForMessage(AzureHelper.ServerRequestQueue, message => true, ProcessNewJob);
-                AzureHelper.PollForMessage(AzureHelper.WorkerResponseQueue, message => true, ProcessWorkerResponse);
+                AzureHelper.PollForMessage(AzureHelper.ServerRequestQueue, message => true, ProcessNewJob, visibilityTimeoutSeconds:3600);
+                AzureHelper.PollForMessage(AzureHelper.WorkerResponseQueue, message => true, ProcessWorkerResponse, visibilityTimeoutSeconds:3600);
             
                 Thread.Sleep(500);
             }
