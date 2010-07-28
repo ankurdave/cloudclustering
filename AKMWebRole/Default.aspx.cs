@@ -197,6 +197,7 @@ namespace AKMWebRole
 
             StopWaitingForResults();
             Status.Text = "Done!";
+            StatusProgress.Text = "";
 
             UpdateStatus(jobResult.JobID, true);
             
