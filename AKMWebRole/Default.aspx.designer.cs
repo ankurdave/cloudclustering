@@ -49,6 +49,15 @@ namespace AKMWebRole {
         protected global::System.Web.UI.WebControls.FileUpload PointsFile;
         
         /// <summary>
+        /// PointsBlob control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox PointsBlob;
+        
+        /// <summary>
         /// K control.
         /// </summary>
         /// <remarks>
@@ -148,6 +157,15 @@ namespace AKMWebRole {
         protected global::System.Web.UI.WebControls.Literal Visualization;
         
         /// <summary>
+        /// PointsURI control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label PointsURI;
+        
+        /// <summary>
         /// Points control.
         /// </summary>
         /// <remarks>
@@ -155,6 +173,15 @@ namespace AKMWebRole {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Points;
+        
+        /// <summary>
+        /// CentroidsURI control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label CentroidsURI;
         
         /// <summary>
         /// Centroids control.

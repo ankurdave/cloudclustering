@@ -15,6 +15,8 @@
                 <asp:TextBox ID="N" runat="server"></asp:TextBox>
                 &nbsp;or Points File:
                 <asp:FileUpload ID="PointsFile" runat="server" />
+                &nbsp;or Points Blob URI:
+                <asp:TextBox ID="PointsBlob" runat="server"></asp:TextBox>
                 <br />
                 Clusters (k):
                 <asp:TextBox ID="K" runat="server"></asp:TextBox>
@@ -39,10 +41,10 @@
 
             <div class="visualization"><asp:Literal ID="Visualization" runat="server"></asp:Literal></div>
             
-            <p><strong>Points:</strong></p>
+            <p><strong>Points:</strong> <asp:Label ID="PointsURI" runat="server" Text=""></asp:Label></p>
             <table><asp:Label ID="Points" runat="server" Text=""></asp:Label></table>
 
-            <p><strong>Centroids:</strong></p>
+            <p><strong>Centroids:</strong> <asp:Label ID="CentroidsURI" runat="server" Text=""></asp:Label></p>
             <table><asp:Label ID="Centroids" runat="server" Text=""></asp:Label></table>
 
             <asp:Timer ID="UpdateTimer" runat="server" Enabled="False" Interval="1000" 

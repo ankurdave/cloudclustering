@@ -57,6 +57,12 @@ namespace AKMWebRole
                 }
                 pointsBlobUri = pointsBlob.Uri;
             }
+            else if (!string.IsNullOrEmpty(PointsBlob.Text))
+            {
+                CloudBlob pointsBlob = AzureHelper.CreateBlob(jobID.ToString(), AzureHelper.PointsBlob);
+                pointsBlob.CopyFromBlob(AzureHelper.GetBlob(new Uri(PointsBlob.Text)));
+                pointsBlobUri = pointsBlob.Uri;
+            }
 
             int nInt = 0, kInt = 0, mInt = 0, maxIterationCountInt = 0;
             int.TryParse(N.Text, out nInt);
@@ -72,19 +78,13 @@ namespace AKMWebRole
 
         private void ClearIndicators()
         {
-            Visualization.Text = "";
-            Points.Text = "";
-            Centroids.Text = "";
-            Status.Text = "";
-            StatusProgress.Text = "";
-            Stats.Text = "";
+            Visualization.Text = Points.Text = PointsURI.Text = Centroids.Text = CentroidsURI.Text = Status.Text = StatusProgress.Text = DownloadLog.NavigateUrl = "";
             DownloadLog.Enabled = false;
-            DownloadLog.NavigateUrl = "";
         }
 
         private void FreezeUnfreezeUI(bool freeze = true)
         {
-            Run.Enabled = N.Enabled = K.Enabled = M.Enabled = MaxIterationCount.Enabled = !freeze;
+            Run.Enabled = N.Enabled = K.Enabled = M.Enabled = MaxIterationCount.Enabled = PointsFile.Enabled = PointsBlob.Enabled = !freeze;
         }
 
         private void FreezeUI()
@@ -266,6 +266,9 @@ namespace AKMWebRole
             Points.Text = pointsString.ToString();
             Centroids.Text = centroidsString.ToString();
             Visualization.Text = visualization.ToString();
+
+            PointsURI.Text = points.Uri.ToString();
+            CentroidsURI.Text = centroids.Uri.ToString();
         }
 
         private string GuidToColor(Guid guid)
