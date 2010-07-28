@@ -39,6 +39,8 @@ namespace AKMWebRole
             ClearIndicators();
             Guid jobID = Guid.NewGuid();
             Status.Text = string.Format("Running job {0}.", jobID);
+            DownloadLog.NavigateUrl = string.Format("Log.aspx?JobID={0}", jobID);
+            DownloadLog.Enabled = true;
             UpdatePanel1.Update();
 
             Session["jobID"] = jobID;
@@ -57,6 +59,8 @@ namespace AKMWebRole
             Status.Text = "";
             StatusProgress.Text = "";
             Stats.Text = "";
+            DownloadLog.Enabled = false;
+            DownloadLog.NavigateUrl = "";
         }
 
         private void FreezeUnfreezeUI(bool freeze = true)

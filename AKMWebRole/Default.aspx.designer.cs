@@ -103,6 +103,15 @@ namespace AKMWebRole {
         protected global::System.Web.UI.WebControls.Label StatusProgress;
         
         /// <summary>
+        /// DownloadLog control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HyperLink DownloadLog;
+        
+        /// <summary>
         /// StatsSummary control.
         /// </summary>
         /// <remarks>
