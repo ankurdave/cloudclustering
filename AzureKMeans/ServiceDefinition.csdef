@@ -7,11 +7,6 @@
     <ConfigurationSettings>
       <Setting name="DiagnosticsConnectionString" />
       <Setting name="DataConnectionString" />
-      <Setting name="mailSmtpHost"/>
-      <Setting name="mailSmtpPort"/>
-      <Setting name="mailSendingAddress"/>
-      <Setting name="mailSendingPassword"/>
-      <Setting name="mailSmtpSsl"/>
     </ConfigurationSettings>
   </WebRole>
   <WorkerRole name="AKMWorkerRole" vmsize="Medium">
@@ -24,6 +19,12 @@
     <ConfigurationSettings>
       <Setting name="DiagnosticsConnectionString" />
       <Setting name="DataConnectionString" />
+
+      <Setting name="mailSmtpHost"/>
+      <Setting name="mailSmtpPort"/>
+      <Setting name="mailSendingAddress"/>
+      <Setting name="mailSendingPassword"/>
+      <Setting name="mailSmtpSsl"/>
     </ConfigurationSettings>
   </WorkerRole>
 </ServiceDefinition>

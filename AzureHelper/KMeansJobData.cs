@@ -16,6 +16,7 @@ namespace AzureUtils
         public int M { get; set; }
         public int MaxIterationCount { get; set; }
         public DateTime JobStartTime { get; set; }
+        public string ProgressEmail { get; set; }
 
         public KMeansJobData(Guid jobID, int n, Uri points, int k, int m, int maxIterationCount, DateTime jobStartTime)
         {

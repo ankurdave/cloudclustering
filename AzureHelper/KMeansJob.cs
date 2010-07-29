@@ -181,6 +181,10 @@ namespace AzureUtils
             CommitPointsBlob();
 
             IterationCount++;
+            if (!string.IsNullOrEmpty(jobData.ProgressEmail))
+            {
+                AzureHelper.SendStatusEmail(jobData.ProgressEmail, jobData.JobID, IterationCount);
+            }
 
             if (NumPointsChangedAboveThreshold())
             {

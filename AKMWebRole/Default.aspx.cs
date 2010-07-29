@@ -9,9 +9,6 @@ using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 using System.Data.Services.Client;
 using System.IO;
-using System.Net.Mail;
-using Microsoft.WindowsAzure.ServiceRuntime;
-using System.Net;
 
 namespace AKMWebRole
 {
@@ -49,8 +46,6 @@ namespace AKMWebRole
             Session["jobID"] = jobID;
             Session["lastLogRefreshTime"] = DateTime.MinValue;
             Session["allLogs"] = new List<PerformanceLog>();
-            Session["progressEmail"] = ProgressEmail.Text;
-            Session["currentIteration"] = -1;
 
             Uri pointsBlobUri = null;
             if (PointsFile.HasFile)
@@ -75,7 +70,10 @@ namespace AKMWebRole
             int.TryParse(M.Text, out mInt);
             int.TryParse(MaxIterationCount.Text, out maxIterationCountInt);
 
-            KMeansJobData jobData = new KMeansJobData(jobID, nInt, pointsBlobUri, kInt, mInt, maxIterationCountInt, DateTime.Now);
+            KMeansJobData jobData = new KMeansJobData(jobID, nInt, pointsBlobUri, kInt, mInt, maxIterationCountInt, DateTime.Now)
+            {
+                ProgressEmail = ProgressEmail.Text
+            };
             AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, jobData);
 
             WaitForResults();
@@ -166,13 +164,6 @@ namespace AKMWebRole
                     logGroup.Count());
             }
 
-            // Send an email if we have moved into the next iteration
-            if (!string.IsNullOrEmpty((string)Session["progressEmail"]) && (int)Session["currentIteration"] < logs.Last().IterationCount)
-            {
-                Session["currentIteration"] = logs.Last().IterationCount;
-                SendStatusEmail((string)Session["progressEmail"], jobID, logs.Last().IterationCount);
-            }
-
             // Update the points and centroids displays
             try
             {
@@ -188,24 +179,6 @@ namespace AKMWebRole
             catch (IOException e)
             {
                 Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
-            }
-        }
-
-        private void SendStatusEmail(string emailAddress, Guid jobID, int iteration)
-        {
-            SmtpClient client = new SmtpClient(RoleEnvironment.GetConfigurationSettingValue("mailSmtpHost"), int.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpPort")))
-            {
-                Credentials = new NetworkCredential(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), RoleEnvironment.GetConfigurationSettingValue("mailSendingPassword")),
-                EnableSsl = bool.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpSsl"))
-            };
-
-            try
-            {
-                client.Send(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), emailAddress, string.Format("CloudClustering job {0}", jobID), string.Format("CloudClustering job {0} has begun iteration {1}.", jobID, iteration));
-            }
-            catch (Exception e)
-            {
-                System.Diagnostics.Trace.WriteLine("Failed to send status email: " + e.ToString());
             }
         }
 

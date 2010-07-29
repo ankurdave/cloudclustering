@@ -7,6 +7,8 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.ServiceRuntime;
 using System.Threading;
 using System.IO;
+using System.Net.Mail;
+using System.Net;
 
 namespace AzureUtils
 {
@@ -236,6 +238,24 @@ namespace AzureUtils
             action.Invoke();
             DateTime end = DateTime.Now;
             return end - start;
+        }
+
+        public static void SendStatusEmail(string emailAddress, Guid jobID, int iteration)
+        {
+            SmtpClient client = new SmtpClient(RoleEnvironment.GetConfigurationSettingValue("mailSmtpHost"), int.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpPort")))
+            {
+                Credentials = new NetworkCredential(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), RoleEnvironment.GetConfigurationSettingValue("mailSendingPassword")),
+                EnableSsl = bool.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpSsl"))
+            };
+
+            try
+            {
+                client.Send(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), emailAddress, string.Format("CloudClustering job {0}", jobID), string.Format("CloudClustering job {0} has begun iteration {1}.", jobID, iteration));
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Trace.WriteLine("Failed to send status email: " + e.ToString());
+            }
         }
     }
 }
