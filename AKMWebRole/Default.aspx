@@ -28,6 +28,10 @@
                 <asp:TextBox ID="MaxIterationCount" runat="server">0</asp:TextBox>
                 &nbsp;(0 is unlimited)</p>
             
+            <p>
+                Send progress updates to email address: <asp:TextBox ID="ProgressEmail" runat="server"></asp:TextBox>
+            </p>
+            
             <p><asp:Button ID="Run" runat="server" onclick="Run_Click" Text="Run K-Means" /></p>
             <p><asp:Button ID="ClearBlobs" runat="server" onclick="ClearBlobs_Click" Text="Clear Blobs" /></p>
 
