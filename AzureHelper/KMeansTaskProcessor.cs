@@ -44,8 +44,6 @@ namespace AzureUtils
                 TaskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
                 using (PointStream<ClusterPoint> writeStream = new PointStream<ClusterPoint>(writeBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
                 {
-                    object numPointsChangedLock = new object();
-
                     // Pipelined execution -- see http://msdn.microsoft.com/en-us/magazine/cc163329.aspx
                     foreach (var result in assignedPoints)
                     {
