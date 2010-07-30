@@ -91,5 +91,23 @@ namespace AzureUtils
 
             return minElement;
         }
+
+        public static int MinIndex<T>(this IList<T> list, Func<T, double> comparer)
+        {
+            int minIndex = -1;
+            double minValue = double.MaxValue;
+            for (int i = 0; i < list.Count; i++)
+            {
+                double value = comparer.Invoke(list[i]);
+
+                if (value < minValue)
+                {
+                    minIndex = i;
+                    minValue = value;
+                }
+            }
+
+            return minIndex;
+        }
     }
 }

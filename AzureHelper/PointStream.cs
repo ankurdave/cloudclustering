@@ -18,7 +18,7 @@ namespace AzureUtils
         public PointStream(CloudBlob pointBlob, Func<byte[], T> pointDeserializer, int pointSize, int partitionNumber, int totalPartitions)
             : this(pointBlob, pointDeserializer, pointSize)
         {
-            long partitionLength = PartitionLength(Length, totalPartitions);
+            long partitionLength = AzureHelper.PartitionLength((int)Length, totalPartitions);
             this.startByte = partitionNumber * partitionLength;
             this.endByte = Math.Min(startByte + partitionLength, stream.Length);
         }
@@ -79,7 +79,7 @@ namespace AzureUtils
         {
             // Calculate what portion of points to read
             long numPoints = Length;
-            long partitionLength = PartitionLength(numPoints, totalPartitions);
+            long partitionLength = AzureHelper.PartitionLength((int)numPoints, totalPartitions) * pointSize;
             long startByte = partitionNumber * partitionLength;
 
             // Read the entire partition from stream
@@ -89,11 +89,6 @@ namespace AzureUtils
 
             // Write it to output
             output.Write(partition, 0, actualLength);
-        }
-
-        private long PartitionLength(long numPoints, int numPartitions)
-        {
-            return (long)Math.Ceiling((double)numPoints / numPartitions) * pointSize;
         }
 
         public long Length

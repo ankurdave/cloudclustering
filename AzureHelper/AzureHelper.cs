@@ -257,5 +257,34 @@ namespace AzureUtils
                 System.Diagnostics.Trace.WriteLine("Failed to send status email: " + e.ToString());
             }
         }
+
+        /// <summary>
+        /// Slices a sequence into a sub-sequences each containing maxItemsPerSlice, except for the last
+        /// which will contain any items left over
+        /// </summary>
+        public static IEnumerable<IGrouping<int, T>> Slice<T>(this IEnumerable<T> sequence, int maxItemsPerSlice)
+        {
+            return sequence
+                .Select((element, index) => new { Index = index, Element = element })
+                .GroupBy(indexedElement => indexedElement.Index / maxItemsPerSlice, indexedElement => indexedElement.Element);
+        }
+
+        /// <summary>
+        /// Slices a sequence into numSlices slices.
+        /// </summary>
+        public static IEnumerable<IGrouping<int, T>> SliceInto<T>(this IEnumerable<T> sequence, int numSlices)
+        {
+            return sequence
+                .Select((element, index) => new { Index = index, Element = element })
+                .GroupBy(indexedElement => indexedElement.Index % numSlices, indexedElement => indexedElement.Element);
+        }
+
+        /// <summary>
+        /// Given the number of total elements in a sequence and the number of partitions to divide it into, calculates the maximum number of elements per partition.
+        /// </summary>
+        public static int PartitionLength(int numElements, int numPartitions)
+        {
+            return (int)Math.Ceiling((double)numElements / numPartitions);
+        }
     }
 }
