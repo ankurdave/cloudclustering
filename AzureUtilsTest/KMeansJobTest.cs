@@ -193,33 +193,24 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void ProcessWorkerResponseTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 2, 10, DateTime.Now);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 1, 10, DateTime.Now);
             KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
             target.InitializeStorage();
             target.EnqueueTasks();
 
-            PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(target.Points, ClusterPoint.FromByteArray, ClusterPoint.Size);
-            CloudBlob pointPartition = AzureHelper.CreateBlob(jobData.JobID.ToString(), "testblob");
-            using (BlobStream stream = pointPartition.OpenWrite())
-            {
-                pointStream.CopyPartition(0, 2, stream);
-            }
-            
-            // Modify the first few bytes of the pointPartition blob, so we can verify that it got copied
-            byte[] arbitraryBytes = new byte[8];
-            new Random().NextBytes(arbitraryBytes);
-            using (BlobStream pointPartitionWriteStream = pointPartition.OpenWrite())
-            {
-                pointPartitionWriteStream.Write(arbitraryBytes, 0, arbitraryBytes.Length);
-            }
+            // Upload a block with an arbitrary ClusterPoint, so we can verify it gets copied
+            ObjectBlockWriter<ClusterPoint> pointPartitionWriteStream = new ObjectBlockWriter<ClusterPoint>(target.Points, point => point.ToByteArray(), ClusterPoint.Size);
+            ClusterPoint arbitraryPoint = new ClusterPoint(1, 2, Guid.NewGuid());;
+            pointPartitionWriteStream.Write(arbitraryPoint);
+            pointPartitionWriteStream.FlushBlock();
 
             KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), 0, target.Centroids.Uri, DateTime.Now, 0);
-            taskData.Points = pointPartition.Uri;
 
             target.tasks.Clear();
             target.tasks.Add(new KMeansTask(taskData));
             
             KMeansTaskResult taskResult = new KMeansTaskResult(taskData);
+            taskResult.PointsBlockList = pointPartitionWriteStream.BlockList;
             taskResult.NumPointsChanged = 2;
             Guid centroidID = Guid.NewGuid();
             taskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData> {
@@ -231,13 +222,13 @@ namespace AzureUtilsTest
             };
             target.ProcessWorkerResponse(taskResult);
             
-            // Verify that the first few bytes of Points are indeed full of arbitraryBytes
-            using (BlobStream pointsStream = target.Points.OpenRead())
+            // Verify that the first ClusterPoint in Points is indeed equal to arbitraryPoint
+            using (ObjectStreamReader<ClusterPoint> pointsStream = new ObjectStreamReader<ClusterPoint>(target.Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
-                for (int i = 0; i < 8; i++)
-                {
-                    Assert.AreEqual(arbitraryBytes[i], pointsStream.ReadByte());
-                }
+                ClusterPoint point = pointsStream.First();
+                Assert.AreEqual(arbitraryPoint.X, point.X);
+                Assert.AreEqual(arbitraryPoint.Y, point.Y);
+                Assert.AreEqual(arbitraryPoint.CentroidID, point.CentroidID);
             }
         }
 
@@ -286,7 +277,7 @@ namespace AzureUtilsTest
         }
 
         [TestMethod()]
-        public void MultiIterationJobTest()
+        public void MultiIterationJobTest() // should fail because it's not updated
         {
             KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 2, 2, DateTime.Now);
             KMeansJob_Accessor job = new KMeansJob_Accessor(jobData);

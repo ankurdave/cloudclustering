@@ -60,13 +60,16 @@
     <Compile Include="KMeansTask.cs" />
     <Compile Include="KMeansTaskData.cs" />
     <Compile Include="KMeansTaskProcessor.cs" />
+    <Compile Include="ObjectBlockWriter.cs" />
+    <Compile Include="ObjectStreamReader.cs" />
+    <Compile Include="ObjectStreamWriter.cs" />
+    <Compile Include="ObjectWriter.cs" />
     <Compile Include="PerformanceLog.cs" />
     <Compile Include="PerformanceLogContext.cs" />
     <Compile Include="PerformanceLogDataSource.cs" />
     <Compile Include="Point.cs" />
     <Compile Include="KMeansTaskResult.cs" />
     <Compile Include="PointsProcessedData.cs" />
-    <Compile Include="PointStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="KMeansJobData.cs" />
     <Compile Include="KMeansJobResult.cs" />

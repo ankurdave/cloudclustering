@@ -236,7 +236,7 @@ namespace AKMWebRole
             StringBuilder centroidsString = new StringBuilder();
             StringBuilder pointsString = new StringBuilder();
 
-            using (PointStream<ClusterPoint> pointsStream = new PointStream<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size))
+            using (ObjectStreamReader<ClusterPoint> pointsStream = new ObjectStreamReader<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
                 int pointIndex = 0;
                 foreach (ClusterPoint p in pointsStream)
@@ -253,7 +253,7 @@ namespace AKMWebRole
                 }
             }
 
-            using (PointStream<Centroid> centroidsStream = new PointStream<Centroid>(centroids, Centroid.FromByteArray, Centroid.Size))
+            using (ObjectStreamReader<Centroid> centroidsStream = new ObjectStreamReader<Centroid>(centroids, Centroid.FromByteArray, Centroid.Size))
             {
                 foreach (Centroid p in centroidsStream)
                 {

@@ -32,44 +32,43 @@ namespace AzureUtils
         /// </summary>
         private void ProcessPoints()
         {
-            // Initialize the write blob
-            CloudBlob writeBlob = AzureHelper.CreateBlob(task.JobID.ToString(), Guid.NewGuid().ToString());
+            CloudBlockBlob pointsBlob = AzureHelper.GetBlob(task.Points);
 
             // Do the mapping and write the new blob
-            using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(task.Points), ClusterPoint.FromByteArray, ClusterPoint.Size, task.PartitionNumber, task.M))
+            using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(pointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, task.PartitionNumber, task.M))
             {
                 var assignedPoints = stream.AsParallel().Select(AssignClusterPointToNearestCentroid);
 
+                ObjectBlockWriter<ClusterPoint> writeStream = new ObjectBlockWriter<ClusterPoint>(pointsBlob, point => point.ToByteArray(), ClusterPoint.Size);
                 TaskResult.NumPointsChanged = 0;
                 TaskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
-                using (PointStream<ClusterPoint> writeStream = new PointStream<ClusterPoint>(writeBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
+
+                // Pipelined execution -- see http://msdn.microsoft.com/en-us/magazine/cc163329.aspx
+                foreach (var result in assignedPoints)
                 {
-                    // Pipelined execution -- see http://msdn.microsoft.com/en-us/magazine/cc163329.aspx
-                    foreach (var result in assignedPoints)
+                    // Write the point to the new blob
+                    writeStream.Write(result.Point);
+
+                    // Update the number of points changed counter
+                    if (result.PointWasChanged)
                     {
-                        // Write the point to the new blob
-                        writeStream.Write(result.Point);
-
-                        // Update the number of points changed counter
-                        if (result.PointWasChanged)
-                        {
-                            TaskResult.NumPointsChanged++;
-                        }
-
-                        // Add to the appropriate centroid group
-                        if (!TaskResult.PointsProcessedDataByCentroid.ContainsKey(result.Point.CentroidID))
-                        {
-                            TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID] = new PointsProcessedData();
-                        }
-
-                        TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].NumPointsProcessed++;
-                        TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].PartialPointSum += result.Point;
+                        TaskResult.NumPointsChanged++;
                     }
-                }
-            }
 
-            // Change TaskResult.Points to refer to the new blob
-            TaskResult.Points = writeBlob.Uri;
+                    // Add to the appropriate centroid group
+                    if (!TaskResult.PointsProcessedDataByCentroid.ContainsKey(result.Point.CentroidID))
+                    {
+                        TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID] = new PointsProcessedData();
+                    }
+
+                    TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].NumPointsProcessed++;
+                    TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].PartialPointSum += result.Point;
+                }
+
+                // Send the block list as part of TaskResult
+                writeStream.FlushBlock();
+                TaskResult.PointsBlockList = writeStream.BlockList;
+            }
         }
 
         private static Dictionary<Guid, PointsProcessedData> MergePointsProcessedDataByCentroid(Dictionary<Guid, PointsProcessedData> runningTotal, Dictionary<Guid, PointsProcessedData> next)
@@ -103,7 +102,7 @@ namespace AzureUtils
 
         private void InitializeCentroids()
         {
-            using (PointStream<Centroid> stream = new PointStream<Centroid>(AzureHelper.GetBlob(task.Centroids), Centroid.FromByteArray, Centroid.Size))
+            using (ObjectStreamReader<Centroid> stream = new ObjectStreamReader<Centroid>(AzureHelper.GetBlob(task.Centroids), Centroid.FromByteArray, Centroid.Size))
             {
                 centroids = stream.ToList();
             }

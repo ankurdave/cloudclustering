@@ -39,7 +39,7 @@ namespace AzureUtils
             {
                 // Initialize the points blob with N random ClusterPoints
                 Points = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.PointsBlob);
-                using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
+                using (ObjectStreamWriter<ClusterPoint> stream = new ObjectStreamWriter<ClusterPoint>(Points, point => point.ToByteArray(), ClusterPoint.Size))
                 {
                     for (int i = 0; i < jobData.N; i++)
                     {
@@ -56,7 +56,7 @@ namespace AzureUtils
                 Points = AzureHelper.GetBlob(jobData.Points);
 
                 // Initialize N based on that
-                using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
+                using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
                 {
                     jobData.N = (int)stream.Length;
                 }
@@ -64,7 +64,7 @@ namespace AzureUtils
             
             // Initialize the centroids blob with K random Centroids
             Centroids = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.CentroidsBlob);
-            using (PointStream<Centroid> stream = new PointStream<Centroid>(Centroids, Centroid.FromByteArray, Centroid.Size, false))
+            using (ObjectStreamWriter<Centroid> stream = new ObjectStreamWriter<Centroid>(Centroids, point => point.ToByteArray(), Centroid.Size))
             {
                 for (int i = 0; i < jobData.K; i++)
                 {
@@ -90,17 +90,14 @@ namespace AzureUtils
         {
             DateTime start = DateTime.UtcNow;
 
-            using (PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
+            for (int i = 0; i < jobData.M; i++)
             {
-                for (int i = 0; i < jobData.M; i++)
-                {
-                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, start, IterationCount);
-                    taskData.Points = Points.Uri;
+                KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, start, IterationCount);
+                taskData.Points = Points.Uri;
 
-                    tasks.Add(new KMeansTask(taskData));
+                tasks.Add(new KMeansTask(taskData));
 
-                    AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData, true);
-                }
+                AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData, true);
             }
 
             DateTime end = DateTime.UtcNow;
@@ -128,9 +125,8 @@ namespace AzureUtils
             KMeansTask task = TaskResultWithTaskID(taskResult.TaskID);
             task.Running = false; // The task has returned a response, which means that it has stopped running
 
-            // Copy the worker's point partition into a block
-            List<string> blockIDs = AzureHelper.CopyBlobToBlocks(AzureHelper.GetBlob(taskResult.Points), Points);
-            pointsBlockIDs.AddRange(blockIDs);
+            // Add the worker's updated points blocks
+            pointsBlockIDs.AddRange(taskResult.PointsBlockList);
 
             // Copy out and integrate the data from the worker response
             AddDataFromTaskResult(taskResult);
@@ -253,7 +249,7 @@ namespace AzureUtils
             CloudBlob writeBlob = AzureHelper.CreateBlob(jobData.JobID.ToString(), Guid.NewGuid().ToString());
 
             // Do the mapping and write the new blob
-            using (PointStream<Centroid> stream = new PointStream<Centroid>(Centroids, Centroid.FromByteArray, Centroid.Size))
+            using (ObjectStreamReader<Centroid> stream = new ObjectStreamReader<Centroid>(Centroids, Centroid.FromByteArray, Centroid.Size))
             {
                 var newCentroids = stream.Select(c =>
                     {
@@ -274,7 +270,7 @@ namespace AzureUtils
                         return c;
                     });
 
-                using (PointStream<Centroid> writeStream = new PointStream<Centroid>(writeBlob, Centroid.FromByteArray, Centroid.Size, false))
+                using (ObjectStreamWriter<Centroid> writeStream = new ObjectStreamWriter<Centroid>(writeBlob, point => point.ToByteArray(), Centroid.Size))
                 {
                     foreach (Centroid c in newCentroids)
                     {

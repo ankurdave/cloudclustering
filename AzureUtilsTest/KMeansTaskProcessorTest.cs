@@ -123,7 +123,7 @@ namespace AzureUtilsTest
             CloudBlob centroids = container.GetBlobReference(Guid.NewGuid().ToString());
             const int NumPoints = 10000, NumCentroids = 10;
 
-            using (PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size, false))
+            using (ObjectStreamWriter<ClusterPoint> pointStream = new ObjectStreamWriter<ClusterPoint>(points, point => point.ToByteArray(), ClusterPoint.Size))
             {
                 for (int i = 0; i < NumPoints; i++)
                 {
@@ -132,7 +132,7 @@ namespace AzureUtilsTest
             }
 
             Guid centroidID = Guid.NewGuid();
-            using (PointStream<Centroid> stream = new PointStream<Centroid>(centroids, Centroid.FromByteArray, Centroid.Size, false))
+            using (ObjectStreamWriter<Centroid> stream = new ObjectStreamWriter<Centroid>(centroids, point => point.ToByteArray(), Centroid.Size))
             {
                 stream.Write(new Centroid(centroidID, 3, 4));
 
@@ -153,7 +153,11 @@ namespace AzureUtilsTest
                 target.ProcessPoints();
             }).TotalSeconds + " seconds");
 
-            using (PointStream<ClusterPoint> stream = new PointStream<ClusterPoint>(AzureHelper.GetBlob(target.TaskResult.Points).OpenRead(), ClusterPoint.FromByteArray, ClusterPoint.Size))
+            // Commit the blocks
+            CloudBlockBlob newPointsBlob = AzureHelper.GetBlob(target.TaskResult.Points);
+            newPointsBlob.PutBlockList(target.TaskResult.PointsBlockList);
+
+            using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(newPointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
                 foreach (ClusterPoint p in stream)
                 {

@@ -213,6 +213,11 @@ namespace AzureUtils
             return blockIDs;
         }
 
+        public static string GenerateRandomBlockID()
+        {
+            return Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+        }
+
         public static void CommitBlockBlob(CloudBlockBlob blob, List<string> blockIDs)
         {
             blob.PutBlockList(blockIDs);

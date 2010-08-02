@@ -69,7 +69,7 @@ namespace AzureUtilsTest
 
 
         /// <summary>
-        ///A test for GetEnumerator
+        ///A test for GetEnumerator (on ObjectStreamReader)
         ///</summary>
         [TestMethod()]
         public void EnumeratorTest()
@@ -82,7 +82,7 @@ namespace AzureUtilsTest
                 stream.Write(p.ToByteArray(), 0, ClusterPoint.Size);
             }
 
-            PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(new MemoryStream(stream.ToArray()), ClusterPoint.FromByteArray, ClusterPoint.Size);
+            ObjectStreamReader<ClusterPoint> pointStream = new ObjectStreamReader<ClusterPoint>(new MemoryStream(stream.ToArray()), ClusterPoint.FromByteArray, ClusterPoint.Size);
             Assert.AreEqual(p.CentroidID, pointStream.First().CentroidID);
 
             DateTime serialStart = DateTime.Now;
@@ -106,39 +106,6 @@ namespace AzureUtilsTest
             System.Diagnostics.Trace.WriteLine(string.Format("serial: {0}, parallel: {1}",
                 (serialEnd - serialStart).TotalSeconds,
                 (parallelEnd - parallelStart).TotalSeconds));
-        }
-
-        /// <summary>
-        ///A test for CopyPartition
-        ///</summary>
-        [TestMethod()]
-        [DeploymentItem("AzureHelper.dll")]
-        public void CopyPartitionTest()
-        {
-            const int NumElements = 4;
-            const int partitionNumber = 0;
-            const int totalPartitions = 2;
-
-            ClusterPoint p = new ClusterPoint(1, 2, Guid.NewGuid());
-            MemoryStream stream = new MemoryStream();
-            for (int i = 0; i < NumElements; i++)
-            {
-                stream.Write(p.ToByteArray(), 0, ClusterPoint.Size);
-            }
-
-            PointStream<ClusterPoint> pointStream = new PointStream<ClusterPoint>(new MemoryStream(stream.ToArray()), ClusterPoint.FromByteArray, ClusterPoint.Size);
-
-            MemoryStream partition = new MemoryStream();
-
-            pointStream.CopyPartition(partitionNumber, totalPartitions, partition);
-
-            stream.Position = 0;
-
-            Assert.AreEqual(ClusterPoint.Size * 2, partition.Length);
-            while (partition.Position < partition.Length)
-            {
-                Assert.AreEqual(stream.ReadByte(), partition.ReadByte());
-            }
         }
     }
 }
