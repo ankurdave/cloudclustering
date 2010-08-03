@@ -16,21 +16,19 @@ namespace AzureUtils
         private int objectSize;
 
         public ObjectStreamReader(CloudBlob blob, Func<byte[], T> objectDeserializer, int objectSize,
-            int partitionNumber = 0, int totalPartitions = 1)
-            : this(blob.OpenRead(), objectDeserializer, objectSize, partitionNumber, totalPartitions)
+            int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
+            : this(blob.OpenRead(), objectDeserializer, objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions)
         {
         }
 
         public ObjectStreamReader(Stream stream, Func<byte[], T> objectDeserializer, int objectSize,
-            int partitionNumber = 0, int totalPartitions = 1)
+            int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
         {
             this.stream = stream;
             this.objectDeserializer = objectDeserializer;
             this.objectSize = objectSize;
 
-            long partitionLength = AzureHelper.PartitionLength((int)Length, totalPartitions) * objectSize;
-            this.readStart = partitionNumber * partitionLength;
-            this.readEnd = Math.Min(readStart + partitionLength, stream.Length);
+            CalculateReadBoundaries(objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions);
         }
 
         public long Length
@@ -39,6 +37,36 @@ namespace AzureUtils
             {
                 return stream.Length / objectSize;
             }
+        }
+
+        private void CalculateReadBoundaries(int objectSize, int partitionNumber, int totalPartitions, int subPartitionNumber, int subTotalPartitions)
+        {
+            long streamObjectLength = Length;
+            long streamObjectReadStart = 0;
+            long streamObjectReadEnd = Length;
+
+            long partitionObjectLength = AzureHelper.PartitionLength(streamObjectLength, totalPartitions);
+            long partitionObjectReadStart = Math.Min(
+                streamObjectReadStart + (partitionNumber * partitionObjectLength),
+                streamObjectReadEnd);
+            long partitionObjectReadEnd = Math.Min(
+                partitionObjectReadStart + partitionObjectLength,
+                streamObjectReadEnd);
+
+            long subPartitionObjectLength = AzureHelper.PartitionLength(partitionObjectLength, subTotalPartitions);
+            long subPartitionObjectReadStart = Math.Min(
+                partitionObjectReadStart + (subPartitionNumber * subPartitionObjectLength),
+                partitionObjectReadEnd);
+            long subPartitionObjectReadEnd = Math.Min(
+                subPartitionObjectReadStart + subPartitionObjectLength,
+                partitionObjectReadEnd);
+
+            this.readStart = Math.Min(
+                subPartitionObjectReadStart * objectSize,
+                stream.Length);
+            this.readEnd = Math.Min(
+                subPartitionObjectReadEnd * objectSize,
+                stream.Length);
         }
 
         #region IEnumerable code

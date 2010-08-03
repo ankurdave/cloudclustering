@@ -35,39 +35,78 @@ namespace AzureUtils
             CloudBlockBlob pointsBlob = AzureHelper.GetBlob(task.Points);
 
             // Do the mapping and write the new blob
-            using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(pointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, task.PartitionNumber, task.M))
+            int numThreads = Environment.ProcessorCount;
+            PointsProcessedData[,] pointSumsPerCentroidPerThread = new PointsProcessedData[numThreads, task.K];
+            int[] pointsChangedPerThread = new int[numThreads];
+            string[][] blockIDsPerThread = new string[numThreads][];
+
+            System.Threading.Tasks.Parallel.For(0, numThreads, threadID =>
             {
-                var assignedPoints = stream.AsParallel().Select(AssignClusterPointToNearestCentroid);
-
-                ObjectBlockWriter<ClusterPoint> writeStream = new ObjectBlockWriter<ClusterPoint>(pointsBlob, point => point.ToByteArray(), ClusterPoint.Size);
-                TaskResult.NumPointsChanged = 0;
-                TaskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
-
-                // Pipelined execution -- see http://msdn.microsoft.com/en-us/magazine/cc163329.aspx
-                foreach (var result in assignedPoints)
+                using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(pointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, task.PartitionNumber, task.M, subPartitionNumber: threadID, subTotalPartitions: numThreads))
                 {
-                    // Write the point to the new blob
-                    writeStream.Write(result.Point);
+                    ObjectBlockWriter<ClusterPoint> writeStream = new ObjectBlockWriter<ClusterPoint>(pointsBlob, point => point.ToByteArray(), ClusterPoint.Size);
 
-                    // Update the number of points changed counter
-                    if (result.PointWasChanged)
+                    foreach (var point in stream)
                     {
-                        TaskResult.NumPointsChanged++;
+                        // Assign the point to the nearest centroid
+                        Guid oldCentroidID = point.CentroidID;
+                        int closestCentroidIndex = centroids.MinIndex(centroid => Point.Distance(point, centroid));
+                        Guid newCentroidID = point.CentroidID = centroids[closestCentroidIndex].ID;
+
+                        // Write the updated point to the writeStream
+                        writeStream.Write(point);
+
+                        // Update the number of points changed
+                        if (oldCentroidID != newCentroidID)
+                        {
+                            pointsChangedPerThread[threadID]++;
+                        }
+
+                        // Update the point sums
+                        if (pointSumsPerCentroidPerThread[threadID, closestCentroidIndex] == null)
+                        {
+                            pointSumsPerCentroidPerThread[threadID, closestCentroidIndex] = new PointsProcessedData();
+                        }
+                        pointSumsPerCentroidPerThread[threadID, closestCentroidIndex].PartialPointSum += point;
+                        pointSumsPerCentroidPerThread[threadID, closestCentroidIndex].NumPointsProcessed++;
                     }
 
-                    // Add to the appropriate centroid group
-                    if (!TaskResult.PointsProcessedDataByCentroid.ContainsKey(result.Point.CentroidID))
-                    {
-                        TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID] = new PointsProcessedData();
-                    }
-
-                    TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].NumPointsProcessed++;
-                    TaskResult.PointsProcessedDataByCentroid[result.Point.CentroidID].PartialPointSum += result.Point;
+                    // Collect the block IDs from writeStream
+                    writeStream.FlushBlock();
+                    blockIDsPerThread[threadID] = writeStream.BlockList.ToArray();
                 }
+            });
 
-                // Send the block list as part of TaskResult
-                writeStream.FlushBlock();
-                TaskResult.PointsBlockList = writeStream.BlockList;
+            // Combine the per-thread block lists
+            List<string> blockIDs = new List<string>();
+            foreach (string[] blockIDsFromThread in blockIDsPerThread)
+            {
+                blockIDs.AddRange(blockIDsFromThread);
+            }
+            TaskResult.PointsBlockList = blockIDs;
+
+            // Total up the per-thread pointSumsPerCentroid
+            TaskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
+            for (int i = 0; i < task.K; ++i)
+            {
+                Guid centroidID = centroids[i].ID;
+                TaskResult.PointsProcessedDataByCentroid[centroidID] = new PointsProcessedData();
+
+                for (int j = 0; j < numThreads; ++j)
+                {
+                    if (pointSumsPerCentroidPerThread[j, i] != null)
+                    {
+                        TaskResult.PointsProcessedDataByCentroid[centroidID].PartialPointSum += pointSumsPerCentroidPerThread[j, i].PartialPointSum;
+                        TaskResult.PointsProcessedDataByCentroid[centroidID].NumPointsProcessed += pointSumsPerCentroidPerThread[j, i].NumPointsProcessed;
+                    }
+                }
+            }
+
+            // Total up the per-thread numPointsChanged
+            TaskResult.NumPointsChanged = 0;
+            foreach (int threadPointsChanged in pointsChangedPerThread)
+            {
+                TaskResult.NumPointsChanged += threadPointsChanged;
             }
         }
 

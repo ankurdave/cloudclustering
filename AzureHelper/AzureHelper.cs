@@ -171,9 +171,9 @@ namespace AzureUtils
         /// <summary>
         /// Given the number of total elements in a sequence and the number of partitions to divide it into, calculates the maximum number of elements per partition.
         /// </summary>
-        public static int PartitionLength(int numElements, int numPartitions)
+        public static long PartitionLength(long numElements, int numPartitions)
         {
-            return (int)Math.Ceiling((double)numElements / numPartitions);
+            return (long)Math.Ceiling((double)numElements / numPartitions);
         }
         #endregion
 
