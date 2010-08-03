@@ -27,6 +27,35 @@ namespace AKMWebRole
                 .Where(log => log.PartitionKey == jobID.ToString()) as DataServiceQuery<PerformanceLog>)
                 .Execute().ToList();
 
+            if (!string.IsNullOrEmpty(Request.Params["summary"]))
+            {
+                PrintSummary(logs);
+            }
+            else
+            {
+                PrintLog(logs);
+            }
+            
+        }
+
+        private void PrintSummary(IEnumerable<PerformanceLog> logs)
+        {
+            logs = logs
+                    .Where(log => log.IterationCount == 0);
+
+            if (string.IsNullOrEmpty(Request.Params["allRoles"]))
+            {
+                logs = GenerateMachineIDs(logs).Where(log => log.MachineID != "server");
+            }
+
+            DateTime startTime = logs.Min(log => log.StartTime);
+            DateTime endTime = logs.Max(log => log.EndTime);
+
+            Response.Write((endTime - startTime).TotalMinutes);
+        }
+
+        private void PrintLog(IEnumerable<PerformanceLog> logs)
+        {
             if (string.IsNullOrEmpty(Request.Params["all"]))
             {
                 logs = logs
