@@ -20,7 +20,9 @@ namespace AzureUtils
         private List<KMeansTask> tasks = new List<KMeansTask>();
         private List<String> pointsBlockIDs = new List<string>();
         private KMeansJobData jobData;
+        
         public int IterationCount { get; private set; }
+        public string MachineID { get; set; }
 
         public KMeansJob(KMeansJobData jobData) {
             this.jobData = jobData;
@@ -32,55 +34,50 @@ namespace AzureUtils
         /// </summary>
         public void InitializeStorage()
         {
-            DateTime start = DateTime.UtcNow;
-            Random random = new Random();
-
-            if (jobData.Points == null)
+            AzureHelper.LogPerformance(() =>
             {
-                // Initialize the points blob with N random ClusterPoints
-                Points = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.PointsBlob);
-                using (ObjectStreamWriter<ClusterPoint> stream = new ObjectStreamWriter<ClusterPoint>(Points, point => point.ToByteArray(), ClusterPoint.Size))
+                Random random = new Random();
+
+                if (jobData.Points == null)
                 {
-                    for (int i = 0; i < jobData.N; i++)
+                    // Initialize the points blob with N random ClusterPoints
+                    Points = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.PointsBlob);
+                    using (ObjectStreamWriter<ClusterPoint> stream = new ObjectStreamWriter<ClusterPoint>(Points, point => point.ToByteArray(), ClusterPoint.Size))
                     {
-                        stream.Write(new ClusterPoint(
-                            random.NextDouble() * 100 - 50,
-                            random.NextDouble() * 100 - 50,
-                            Guid.Empty));
+                        for (int i = 0; i < jobData.N; i++)
+                        {
+                            stream.Write(new ClusterPoint(
+                                random.NextDouble() * 100 - 50,
+                                random.NextDouble() * 100 - 50,
+                                Guid.Empty));
+                        }
                     }
                 }
-            }
-            else
-            {
-                // Use the given points blob
-                Points = AzureHelper.GetBlob(jobData.Points);
-
-                // Initialize N based on that
-                using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
+                else
                 {
-                    jobData.N = (int)stream.Length;
-                }
-            }
-            
-            // Initialize the centroids blob with K random Centroids
-            Centroids = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.CentroidsBlob);
-            using (ObjectStreamWriter<Centroid> stream = new ObjectStreamWriter<Centroid>(Centroids, point => point.ToByteArray(), Centroid.Size))
-            {
-                for (int i = 0; i < jobData.K; i++)
-                {
-                    stream.Write(new Centroid(
-                        Guid.NewGuid(),
-                        random.Next(-PointRange, PointRange),
-                        random.Next(-PointRange, PointRange)));
-                }
-            }
+                    // Use the given points blob
+                    Points = AzureHelper.GetBlob(jobData.Points);
 
-            DateTime end = DateTime.UtcNow;
-            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "InitializeStorage", start, end);
-            log.IterationCount = IterationCount;
-            log.Points = Points.Uri.ToString();
-            log.Centroids = Centroids.Uri.ToString();
-            AzureHelper.PerformanceLogger.Insert(log);
+                    // Initialize N based on that
+                    using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
+                    {
+                        jobData.N = (int)stream.Length;
+                    }
+                }
+
+                // Initialize the centroids blob with K random Centroids
+                Centroids = AzureHelper.CreateBlob(jobData.JobID.ToString(), AzureHelper.CentroidsBlob);
+                using (ObjectStreamWriter<Centroid> stream = new ObjectStreamWriter<Centroid>(Centroids, point => point.ToByteArray(), Centroid.Size))
+                {
+                    for (int i = 0; i < jobData.K; i++)
+                    {
+                        stream.Write(new Centroid(
+                            Guid.NewGuid(),
+                            random.Next(-PointRange, PointRange),
+                            random.Next(-PointRange, PointRange)));
+                    }
+                }
+            }, jobID: jobData.JobID.ToString(), methodName: "InitializeStorage", iterationCount: IterationCount, points: new Lazy<string>(() => Points.Uri.ToString()), centroids: new Lazy<string>(() => Centroids.Uri.ToString()), machineID: MachineID);
         }
 
         /// <summary>
@@ -88,24 +85,18 @@ namespace AzureUtils
         /// </summary>
         public void EnqueueTasks()
         {
-            DateTime start = DateTime.UtcNow;
-
-            for (int i = 0; i < jobData.M; i++)
+            AzureHelper.LogPerformance(() =>
             {
-                KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, start, IterationCount);
-                taskData.Points = Points.Uri;
+                for (int i = 0; i < jobData.M; i++)
+                {
+                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, DateTime.UtcNow, IterationCount);
+                    taskData.Points = Points.Uri;
 
-                tasks.Add(new KMeansTask(taskData));
+                    tasks.Add(new KMeansTask(taskData));
 
-                AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData, true);
-            }
-
-            DateTime end = DateTime.UtcNow;
-            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "EnqueueTasks", start, end);
-            log.IterationCount = IterationCount;
-            log.Points = Points.Uri.ToString();
-            log.Centroids = Centroids.Uri.ToString();
-            AzureHelper.PerformanceLogger.Insert(log);
+                    AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData, true);
+                }
+            }, jobData.JobID.ToString(), methodName: "EnqueueTasks", iterationCount: IterationCount, points: Points.Uri.ToString(), centroids: Centroids.Uri.ToString(), machineID: MachineID);
         }
 
         /// <summary>
@@ -115,28 +106,22 @@ namespace AzureUtils
         /// <returns>False if the given taskData result has already been counted, true otherwise.</returns>
         public bool ProcessWorkerResponse(KMeansTaskResult taskResult)
         {
-            DateTime start = DateTime.UtcNow;
-
             // Make sure we're actually still waiting for a result for this taskData
             // If not, this might be a duplicate queue message
             if (!TaskResultMatchesRunningTask(taskResult))
                 return false;
 
-            KMeansTask task = TaskResultWithTaskID(taskResult.TaskID);
-            task.Running = false; // The task has returned a response, which means that it has stopped running
+            AzureHelper.LogPerformance(() =>
+            {
+                KMeansTask task = TaskResultWithTaskID(taskResult.TaskID);
+                task.Running = false; // The task has returned a response, which means that it has stopped running
 
-            // Add the worker's updated points blocks
-            pointsBlockIDs.AddRange(taskResult.PointsBlockList);
+                // Add the worker's updated points blocks
+                pointsBlockIDs.AddRange(taskResult.PointsBlockList);
 
-            // Copy out and integrate the data from the worker response
-            AddDataFromTaskResult(taskResult);
-
-            DateTime end = DateTime.UtcNow;
-            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "ProcessWorkerResponse", start, end);
-            log.IterationCount = IterationCount;
-            log.Points = Points.Uri.ToString();
-            log.Centroids = Centroids.Uri.ToString();
-            AzureHelper.PerformanceLogger.Insert(log);
+                // Copy out and integrate the data from the worker response
+                AddDataFromTaskResult(taskResult);
+            }, jobData.JobID.ToString(), methodName: "ProcessWorkerResponse", iterationCount: IterationCount, points: Points.Uri.ToString(), centroids: Centroids.Uri.ToString(), machineID: MachineID);
 
             // If this is the last worker to return, this iteration is done and we should start the next one
             if (NoMoreRunningTasks())
@@ -243,53 +228,48 @@ namespace AzureUtils
 
         private void RecalculateCentroids()
         {
-            DateTime start = DateTime.UtcNow;
-
-            // Initialize the output blob
-            CloudBlob writeBlob = AzureHelper.CreateBlob(jobData.JobID.ToString(), Guid.NewGuid().ToString());
-
-            // Do the mapping and write the new blob
-            using (ObjectStreamReader<Centroid> stream = new ObjectStreamReader<Centroid>(Centroids, Centroid.FromByteArray, Centroid.Size))
+            AzureHelper.LogPerformance(() =>
             {
-                var newCentroids = stream.Select(c =>
-                    {
-                        Point newCentroidPoint;
-                        if (totalPointsProcessedDataByCentroid.ContainsKey(c.ID))
-                        {
-                            newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
-                             / (double)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
-                        }
-                        else
-                        {
-                            newCentroidPoint = new Point();
-                        }
+                // Initialize the output blob
+                CloudBlob writeBlob = AzureHelper.CreateBlob(jobData.JobID.ToString(), Guid.NewGuid().ToString());
 
-                        c.X = newCentroidPoint.X;
-                        c.Y = newCentroidPoint.Y;
-
-                        return c;
-                    });
-
-                using (ObjectStreamWriter<Centroid> writeStream = new ObjectStreamWriter<Centroid>(writeBlob, point => point.ToByteArray(), Centroid.Size))
+                // Do the mapping and write the new blob
+                using (ObjectStreamReader<Centroid> stream = new ObjectStreamReader<Centroid>(Centroids, Centroid.FromByteArray, Centroid.Size))
                 {
-                    foreach (Centroid c in newCentroids)
+                    var newCentroids = stream.Select(c =>
+                        {
+                            Point newCentroidPoint;
+                            if (totalPointsProcessedDataByCentroid.ContainsKey(c.ID))
+                            {
+                                newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
+                                 / (double)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
+                            }
+                            else
+                            {
+                                newCentroidPoint = new Point();
+                            }
+
+                            c.X = newCentroidPoint.X;
+                            c.Y = newCentroidPoint.Y;
+
+                            return c;
+                        });
+
+                    using (ObjectStreamWriter<Centroid> writeStream = new ObjectStreamWriter<Centroid>(writeBlob, point => point.ToByteArray(), Centroid.Size))
                     {
-                        writeStream.Write(c);
+                        foreach (Centroid c in newCentroids)
+                        {
+                            writeStream.Write(c);
+                        }
                     }
                 }
-            }
 
-            // Copy the contents of the new blob back into the old blob
-            Centroids.CopyFromBlob(writeBlob);
+                // Copy the contents of the new blob back into the old blob
+                Centroids.CopyFromBlob(writeBlob);
 
-            ResetPointChangedCounts();
+                ResetPointChangedCounts();
 
-            DateTime end = DateTime.UtcNow;
-            PerformanceLog log = new PerformanceLog(jobData.JobID.ToString(), "RecalculateCentroids", start, end);
-            log.IterationCount = IterationCount;
-            log.Points = Points.Uri.ToString();
-            log.Centroids = Centroids.Uri.ToString();
-            AzureHelper.PerformanceLogger.Insert(log);
+            }, jobData.JobID.ToString(), methodName: "RecalculateCentroids", iterationCount: IterationCount, points: Points.Uri.ToString(), centroids: Centroids.Uri.ToString(), machineID: MachineID);
         }
 
         private void ResetPointChangedCounts()

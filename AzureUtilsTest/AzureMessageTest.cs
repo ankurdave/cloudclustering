@@ -73,7 +73,7 @@ namespace AzureUtilsTest
         {
             KMeansJobData target = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 3, 10, DateTime.Now);
             byte[] bytes = target.ToBinary();
-            KMeansJobData targetNew = KMeansJobData.FromMessage<KMeansJobData>(new CloudQueueMessage(bytes));
+            KMeansJobData targetNew = KMeansJobData.FromMessage(new CloudQueueMessage(bytes)) as KMeansJobData;
 
             Assert.AreEqual(target.JobID, targetNew.JobID);
             Assert.AreEqual(target.K, targetNew.K);

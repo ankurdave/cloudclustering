@@ -61,20 +61,5 @@ namespace AzureUtils
 
             return new ClusterPoint(p, new Guid(guidBytes));
         }
-
-        public static void MapByteStream(Stream read, Stream write, Func<ClusterPoint, ClusterPoint> mapper)
-        {
-            byte[] bytes = new byte[ClusterPoint.Size];
-            while (read.Position + ClusterPoint.Size <= read.Length)
-            {
-                read.Read(bytes, 0, bytes.Length);
-                ClusterPoint pOld = ClusterPoint.FromByteArray(bytes);
-
-                ClusterPoint pNew = mapper.Invoke(pOld);
-
-                bytes = pNew.ToByteArray();
-                write.Write(bytes, 0, bytes.Length);
-            }
-        }
     }
 }

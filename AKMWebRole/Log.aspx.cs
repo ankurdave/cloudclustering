@@ -23,23 +23,64 @@ namespace AKMWebRole
 
             Response.ContentType = "text/plain";
 
-            var logs = (AzureHelper.PerformanceLogger.PerformanceLogs
+            IEnumerable<PerformanceLog> logs = (AzureHelper.PerformanceLogger.PerformanceLogs
                 .Where(log => log.PartitionKey == jobID.ToString()) as DataServiceQuery<PerformanceLog>)
-                .Execute();
+                .Execute().ToList();
 
             if (string.IsNullOrEmpty(Request.Params["all"]))
             {
                 logs = logs
                     .Where(log => log.MethodName == "ProcessNewTask");
             }
-            
+
             logs = logs
                 .OrderBy(log => log.StartTime);
-            
+
+            if (logs.Any(log => string.IsNullOrEmpty(log.MachineID)))
+            {
+                logs = GenerateMachineIDs(logs);
+            }
+
             Response.Write(string.Join("", logs
-                .Select(log => string.Format("{0}\t{2}\tExecuting the task {3}-{4}-{5}...\n"
-                    + "{1}\t{2}\tExecution of task {3}-{4}-{5} is done, it takes {6} mins\n",
-                    log.StartTime.ToString("M/d/yyyy H:m"), log.EndTime.ToString("M/d/yyyy H:m"), log.PartitionKey, log.MethodName, log.IterationCount, log.RowKey, (log.EndTime - log.StartTime).TotalMinutes))));
+                .Select(log => string.Format("{0}\t{2}\tExecuting the task {3}...\r\n"
+                    + "{1}\t{2}\tExecution of task {3} is done, it takes {4} mins\r\n",
+                    log.StartTime.Ticks, log.EndTime.Ticks, log.MachineID, Math.Abs((log.MethodName + log.IterationCount + log.RowKey).GetHashCode()), (log.EndTime - log.StartTime).TotalMinutes))));
         }
+
+        /// <summary>
+        /// Processes a list of PerformanceLogs and populates their machine IDs with synthetic but consistent values.
+        /// </summary>
+        /// <param name="log"></param>
+        /// <returns></returns>
+        private IEnumerable<PerformanceLog> GenerateMachineIDs(IEnumerable<PerformanceLog> logs)
+        {
+            int currentIteration = -1;
+            int currentWorkerID = -1;
+
+            foreach (PerformanceLog log in logs)
+            {
+                if (serverMethodNames.Contains(log.MethodName))
+                {
+                    log.MachineID = "server";
+                }
+                else if (workerMethodNames.Contains(log.MethodName))
+                {
+                    // Reset the currentWorkerID on every iteration
+                    if (log.IterationCount != currentIteration)
+                    {
+                        currentWorkerID = -1;
+                        currentIteration = log.IterationCount;
+                    }
+
+                    currentWorkerID++;
+                    log.MachineID = string.Format("worker{0}", currentWorkerID);
+                }
+
+                yield return log;
+            }
+        }
+
+        private static List<string> serverMethodNames = new List<string> { "InitializeStorage", "EnqueueTasks", "ProcessWorkerResponse", "RecalculateCentroids" };
+        private static List<string> workerMethodNames = new List<string> { "ProcessNewTask" };
     }
 }

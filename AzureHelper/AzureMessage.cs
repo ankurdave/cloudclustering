@@ -25,13 +25,13 @@ namespace AzureUtils
         }
 
         // See Figure 2 in http://msdn.microsoft.com/en-us/magazine/ee335721.aspx
-        public static T FromMessage<T>(CloudQueueMessage message)
+        public static AzureMessage FromMessage(CloudQueueMessage message)
         {
             byte[] buffer = message.AsBytes;
             MemoryStream ms = new MemoryStream(buffer);
             ms.Position = 0;
             BinaryFormatter bf = new BinaryFormatter();
-            return (T)bf.Deserialize(ms);
+            return (AzureMessage)bf.Deserialize(ms);
         }
     }
 }

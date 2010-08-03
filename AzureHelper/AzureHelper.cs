@@ -63,6 +63,7 @@ namespace AzureUtils
             }
         }
 
+        #region Queue-related methods
         public static void EnqueueMessage(string queueName, AzureMessage message, bool async = false)
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
@@ -91,7 +92,7 @@ namespace AzureUtils
             if (queueMessage == null)
                 return false;
 
-            AzureMessage message = CreateAzureMessage(queueName, queueMessage);
+            AzureMessage message = AzureMessage.FromMessage(queueMessage);
 
             if (!condition.Invoke(message))
                 return false;
@@ -121,64 +122,26 @@ namespace AzureUtils
             return true;
         }
 
-        private static AzureMessage CreateAzureMessage(string queueName, CloudQueueMessage queueMessage)
+        public static void ClearQueues()
         {
-            switch (queueName) {
-                case ServerRequestQueue:
-                    return KMeansJobData.FromMessage<KMeansJobData>(queueMessage);
-                case ServerResponseQueue:
-                    return KMeansJobResult.FromMessage<KMeansJobResult>(queueMessage);
-                case WorkerRequestQueue:
-                    return KMeansTaskData.FromMessage<KMeansTaskData>(queueMessage);
-                case WorkerResponseQueue:
-                    return KMeansTaskResult.FromMessage<KMeansTaskResult>(queueMessage);
-                default:
-                    throw new InvalidOperationException();
-            }
-        }
+            CloudQueueClient client = StorageAccount.CreateCloudQueueClient();
+            string[] queues = { ServerRequestQueue, ServerResponseQueue, WorkerRequestQueue, WorkerResponseQueue };
 
-        public static void WaitForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int delayMilliseconds = 500, int iterationLimit = 0, int visibilityTimeoutSeconds = 30)
-        {
-            for (int i = 0; iterationLimit == 0 || i < iterationLimit; i++)
+            foreach (string queueName in queues)
             {
-                if (PollForMessage(queueName, condition, action, visibilityTimeoutSeconds))
-                {
-                    break;
-                }
-                else
-                {
-                    Thread.Sleep(delayMilliseconds);
-                }
+                CloudQueue queue = client.GetQueueReference(queueName);
+                queue.CreateIfNotExist();
+                queue.Clear();
             }
         }
+        #endregion
 
+        #region Blob-related methods
         public static CloudBlockBlob GetBlob(Uri uri)
         {
             CloudBlockBlob blob = StorageAccount.CreateCloudBlobClient().GetBlockBlobReference(uri.ToString());
             blob.FetchAttributes();
             return blob;
-        }
-
-        private static void CopyStreamUpToLimit(Stream input, Stream output, int maxBytesToCopy, byte[] copyBuffer)
-        {
-            int numBytesToRead, numBytesActuallyRead, numBytesAlreadyRead = 0;
-            while (true)
-            {
-                numBytesToRead = Math.Min(copyBuffer.Length, maxBytesToCopy - numBytesAlreadyRead);
-                numBytesActuallyRead = input.Read(copyBuffer, 0, numBytesToRead);
-                if (numBytesActuallyRead == 0)
-                    break;
-                numBytesAlreadyRead += numBytesActuallyRead;
-
-                output.Write(copyBuffer, 0, numBytesActuallyRead);
-            }
-        }
-
-        public static CloudBlockBlob CreateBlob(string containerName, string blobName)
-        {
-            CloudBlobContainer container = StorageAccount.CreateCloudBlobClient().GetContainerReference(containerName);
-            container.CreateIfNotExist();
-            return container.GetBlockBlobReference(blobName);
         }
 
         public static CloudBlob GetBlob(string containerName, string blobName)
@@ -187,30 +150,11 @@ namespace AzureUtils
             return container.GetBlobReference(blobName);
         }
 
-        public static List<string> CopyBlobToBlocks(CloudBlob input, CloudBlockBlob output)
+        public static CloudBlockBlob CreateBlob(string containerName, string blobName)
         {
-            List<string> blockIDs = new List<string>();
-            using (BlobStream inputStream = input.OpenRead())
-            {
-                byte[] buffer = new byte[32768];
-
-                // Upload input as one or more blocks
-                while (inputStream.Position < inputStream.Length)
-                {
-                    using (MemoryStream blockStream = new MemoryStream())
-                    {
-                        AzureHelper.CopyStreamUpToLimit(inputStream, blockStream, AzureHelper.MaxBlockSize, buffer);
-                        blockStream.Position = 0; // Reset blockStream's position so that it can be read by PutBlock
-
-                        string blockID = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
-                        output.PutBlock(blockID, blockStream, null);
-
-                        blockIDs.Add(blockID);
-                    }
-                }
-            }
-
-            return blockIDs;
+            CloudBlobContainer container = StorageAccount.CreateCloudBlobClient().GetContainerReference(containerName);
+            container.CreateIfNotExist();
+            return container.GetBlockBlobReference(blobName);
         }
 
         public static string GenerateRandomBlockID()
@@ -224,19 +168,16 @@ namespace AzureUtils
             blob.FetchAttributes(); // Refresh the attributes after PutBlockList has cleared them, so that they can be relied on for later calculations
         }
 
-        public static void ClearQueues()
+        /// <summary>
+        /// Given the number of total elements in a sequence and the number of partitions to divide it into, calculates the maximum number of elements per partition.
+        /// </summary>
+        public static int PartitionLength(int numElements, int numPartitions)
         {
-            CloudQueueClient client = StorageAccount.CreateCloudQueueClient();
-            string[] queues = { ServerRequestQueue, ServerResponseQueue, WorkerRequestQueue, WorkerResponseQueue };
-
-            foreach (string queueName in queues)
-            {
-                CloudQueue queue = client.GetQueueReference(queueName);
-                queue.CreateIfNotExist();
-                queue.Clear();
-            }
+            return (int)Math.Ceiling((double)numElements / numPartitions);
         }
+        #endregion
 
+        #region General utility functions
         public static TimeSpan Time(Action action)
         {
             DateTime start = DateTime.Now;
@@ -245,24 +186,27 @@ namespace AzureUtils
             return end - start;
         }
 
-        public static void SendStatusEmail(string emailAddress, Guid jobID, int iteration)
+        public static void ExponentialBackoff(Func<bool> action, int firstDelayMilliseconds = 100, int backoffFactor = 2, int maxDelay = 10000, int retryLimit = int.MaxValue)
         {
-            SmtpClient client = new SmtpClient(RoleEnvironment.GetConfigurationSettingValue("mailSmtpHost"), int.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpPort")))
+            int delayMilliseconds = firstDelayMilliseconds;
+            for (int i = 0; i < retryLimit; i++)
             {
-                Credentials = new NetworkCredential(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), RoleEnvironment.GetConfigurationSettingValue("mailSendingPassword")),
-                EnableSsl = bool.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpSsl"))
-            };
+                if (action.Invoke())
+                    break;
 
-            try
-            {
-                client.Send(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), emailAddress, string.Format("CloudClustering job {0}", jobID), string.Format("CloudClustering job {0} has begun iteration {1}.", jobID, iteration));
+                Thread.Sleep(delayMilliseconds);
+
+                delayMilliseconds *= backoffFactor;
+                if (delayMilliseconds > maxDelay)
+                {
+                    delayMilliseconds = maxDelay;
+                }
             }
-            catch (Exception e)
-            {
-                System.Diagnostics.Trace.WriteLine("Failed to send status email: " + e.ToString());
-            }
+
         }
+        #endregion
 
+        #region LINQ extension methods
         /// <summary>
         /// Slices a sequence into a sub-sequences each containing maxItemsPerSlice, except for the last
         /// which will contain any items left over
@@ -283,13 +227,50 @@ namespace AzureUtils
                 .Select((element, index) => new { Index = index, Element = element })
                 .GroupBy(indexedElement => indexedElement.Index % numSlices, indexedElement => indexedElement.Element);
         }
+        #endregion
+
+        public static void SendStatusEmail(string emailAddress, Guid jobID, int iteration)
+        {
+            SmtpClient client = new SmtpClient(RoleEnvironment.GetConfigurationSettingValue("mailSmtpHost"), int.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpPort")))
+            {
+                Credentials = new NetworkCredential(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), RoleEnvironment.GetConfigurationSettingValue("mailSendingPassword")),
+                EnableSsl = bool.Parse(RoleEnvironment.GetConfigurationSettingValue("mailSmtpSsl"))
+            };
+
+            try
+            {
+                client.Send(RoleEnvironment.GetConfigurationSettingValue("mailSendingAddress"), emailAddress, string.Format("CloudClustering job {0}", jobID), string.Format("CloudClustering job {0} has begun iteration {1}.", jobID, iteration));
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Trace.WriteLine("Failed to send status email: " + e.ToString());
+            }
+        }
 
         /// <summary>
-        /// Given the number of total elements in a sequence and the number of partitions to divide it into, calculates the maximum number of elements per partition.
+        /// Logs a PerformanceLog entry having the given parameters based on the evaluation of the given action. Supports lazy arguments in certain cases. If an argument is passed lazily, it will only be evaluated after the action is invoked.
         /// </summary>
-        public static int PartitionLength(int numElements, int numPartitions)
+        public static void LogPerformance(Action action, string jobID, string methodName, int iterationCount, Lazy<string> points, Lazy<string> centroids, string machineID)
         {
-            return (int)Math.Ceiling((double)numElements / numPartitions);
+            DateTime start = DateTime.UtcNow;
+            PerformanceLog log = new PerformanceLog(jobID, methodName, start, start);
+            log.IterationCount = iterationCount;
+            if (!points.IsLazy)
+                log.Points = points.Eval();
+            if (!centroids.IsLazy)
+                log.Centroids = centroids.Eval();
+            log.MachineID = machineID;
+            AzureHelper.PerformanceLogger.Insert(log);
+
+            action.Invoke();
+
+            DateTime end = DateTime.UtcNow;
+            log.EndTime = end;
+            if (points.IsLazy)
+                log.Points = points.Eval();
+            if (centroids.IsLazy)
+                log.Centroids = centroids.Eval();
+            AzureHelper.PerformanceLogger.Update(log);
         }
     }
 }

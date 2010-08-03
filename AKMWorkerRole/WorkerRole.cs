@@ -14,6 +14,8 @@ namespace AKMWorkerRole
 {
     public class WorkerRole : RoleEntryPoint
     {
+        private string machineID = Guid.NewGuid().ToString();
+
         public override void Run()
         {
             while (true)
@@ -26,26 +28,19 @@ namespace AKMWorkerRole
 
         private bool ProcessNewTask(AzureMessage message)
         {
-            DateTime start = DateTime.UtcNow;
-
             KMeansTaskData task = message as KMeansTaskData;
-            
             System.Diagnostics.Trace.TraceInformation("[WorkerRole] ProcessNewTask(jobID={1}, taskID={0})", task.TaskID, task.JobID);
 
-            // Process the taskData
-            KMeansTaskProcessor taskProcessor = new KMeansTaskProcessor(task);
-            taskProcessor.Run();
+            AzureHelper.LogPerformance(() =>
+            {
+                // Process the taskData
+                KMeansTaskProcessor taskProcessor = new KMeansTaskProcessor(task);
+                taskProcessor.Run();
 
-            // Send the result back
-            taskProcessor.TaskResult.SavePointsProcessedDataByCentroid();
-            AzureHelper.EnqueueMessage(AzureHelper.WorkerResponseQueue, taskProcessor.TaskResult);
-
-            DateTime end = DateTime.UtcNow;
-            PerformanceLog log = new PerformanceLog(task.JobID.ToString(), "ProcessNewTask", start, end);
-            log.Points = task.Points.ToString();
-            log.Centroids = task.Centroids.ToString();
-            log.IterationCount = task.Iteration;
-            AzureHelper.PerformanceLogger.Insert(log);
+                // Send the result back
+                taskProcessor.TaskResult.SavePointsProcessedDataByCentroid();
+                AzureHelper.EnqueueMessage(AzureHelper.WorkerResponseQueue, taskProcessor.TaskResult);
+            }, jobID: task.JobID.ToString(), methodName: "ProcessNewTask", iterationCount: task.Iteration, points: task.Points.ToString(), centroids: task.Centroids.ToString(), machineID: machineID);
 
             return true;
         }

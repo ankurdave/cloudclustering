@@ -12,7 +12,8 @@ namespace AzureUtils
 
         public Centroid() : base() { }
 
-        public Centroid(Guid id, float x, float y) : base(x, y)
+        public Centroid(Guid id, float x, float y)
+            : base(x, y)
         {
             this.ID = id;
         }
@@ -43,6 +44,7 @@ namespace AzureUtils
 
             return stream.ToArray();
         }
+
         public new static Centroid FromByteArray(byte[] bytes)
         {
             byte[] guidBytes = new byte[16];

@@ -18,6 +18,7 @@ namespace AzureUtils
             this.IterationCount = 0;
             this.Points = string.Empty;
             this.Centroids = string.Empty;
+            this.MachineID = string.Empty;
         }
 
         public PerformanceLog()
@@ -27,6 +28,7 @@ namespace AzureUtils
             this.IterationCount = 0;
             this.Points = string.Empty;
             this.Centroids = string.Empty;
+            this.MachineID = string.Empty;
         }
 
         public string MethodName { get; set; }
@@ -35,5 +37,6 @@ namespace AzureUtils
         public int IterationCount { get; set; }
         public string Points { get; set; }
         public string Centroids { get; set; }
+        public string MachineID { get; set; }
     }
 }

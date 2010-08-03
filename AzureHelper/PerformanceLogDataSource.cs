@@ -38,5 +38,19 @@ namespace AzureUtils
             ServiceContext.AddObject(PerformanceLogContext.PerformanceLogTableName, item);
             ServiceContext.SaveChanges();
         }
+
+        public void Update(PerformanceLog item)
+        {
+            try
+            {
+                ServiceContext.AttachTo(PerformanceLogContext.PerformanceLogTableName, item);
+            }
+            catch (InvalidOperationException e) // Context is already tracking the entity
+            {
+            }
+
+            ServiceContext.UpdateObject(item);
+            ServiceContext.SaveChanges();
+        }
     }
 }

@@ -69,44 +69,58 @@ namespace AzureUtilsTest
 
 
         /// <summary>
-        ///A test for EnqueueMessage
+        ///A test for EnqueueMessage and PollForMessage
         ///</summary>
         [TestMethod()]
-        public void EnqueueWaitForMessageTest()
+        public void EnqueueMessagePollForMessageTest()
         {
-            CloudQueue queue = AzureHelper.StorageAccount.CreateCloudQueueClient().GetQueueReference(AzureHelper.ServerRequestQueue);
-            queue.CreateIfNotExist();
-            queue.Clear();
+            string queueName = Guid.NewGuid().ToString();
+            KMeansJobData message = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 3, 10, DateTime.Now);
+            bool async = false;
 
-            KMeansJobData message = new KMeansJobData(Guid.Empty, 1, null, 2, 3, 10, DateTime.Now);
-            AzureHelper.EnqueueMessage(AzureHelper.ServerRequestQueue, message);
+            AzureHelper.EnqueueMessage(queueName, message, async);
 
-            Thread.Sleep(2000);
+            KMeansJobData foundMessage = null;
+            AzureHelper.ExponentialBackoff(() =>
+                AzureHelper.PollForMessage(queueName, msg => true, msg =>
+                {
+                    foundMessage = msg as KMeansJobData;
+                    return true;
+                }),
+                firstDelayMilliseconds:100,
+                backoffFactor:2,
+                maxDelay:1000,
+                retryLimit:5
+            );
 
-            KMeansJobData responseMessage = null;
-            AzureHelper.WaitForMessage(AzureHelper.ServerRequestQueue, msg => true, msg =>
-            {
-                responseMessage = (KMeansJobData)msg;
-                return true;
-            }, 100, 100);
+            Assert.AreNotEqual(null, foundMessage);
 
-            Assert.AreEqual(message.JobID, responseMessage.JobID);
-            Assert.AreEqual(message.K, responseMessage.K);
+            Assert.AreEqual(message.JobID, foundMessage.JobID);
+            Assert.AreEqual(message.K, foundMessage.K);
         }
 
         [TestMethod()]
-        public void SimpleEnqueueDequeueTest()
+        public void CreateBlobGetBlobTest()
         {
-            CloudQueue queue = AzureHelper.StorageAccount.CreateCloudQueueClient().GetQueueReference(AzureHelper.ServerRequestQueue);
-            queue.CreateIfNotExist();
-            queue.Clear();
+            string containerName = Guid.NewGuid().ToString();
+            string blobName = Guid.NewGuid().ToString();
+            
+            CloudBlockBlob blob = AzureHelper.CreateBlob(containerName, blobName);
 
-            Guid message = Guid.NewGuid();
-            queue.AddMessage(new CloudQueueMessage(message.ToByteArray()));
-            Thread.Sleep(2000);
-            Guid received = new Guid(queue.GetMessage().AsBytes);
+            byte[] bytes = new byte[] { 1, 2, 3 };
+            using (Stream stream = blob.OpenWrite())
+            {
+                stream.Write(bytes, 0, bytes.Length);
+            }
 
-            Assert.AreEqual(message, received);
+            CloudBlockBlob foundBlob = AzureHelper.GetBlob(blob.Uri);
+            using (Stream stream = foundBlob.OpenRead())
+            {
+                foreach (int b in bytes)
+                {
+                    Assert.AreEqual(b, stream.ReadByte());
+                }
+            }
         }
 
         [TestMethod()]
@@ -119,7 +133,7 @@ namespace AzureUtilsTest
             AzureMessage message = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 3, 10, DateTime.Now);
             queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
             Thread.Sleep(2000);
-            AzureMessage received = KMeansJobData.FromMessage<KMeansJobData>(queue.GetMessage());
+            AzureMessage received = KMeansJobData.FromMessage(queue.GetMessage());
 
             KMeansJobData messageCast = message as KMeansJobData,
                 receivedCast = received as KMeansJobData;
@@ -146,52 +160,12 @@ namespace AzureUtilsTest
             Assert.AreEqual(blob.Properties.Length, AzureHelper.GetBlob(blob.Uri).Properties.Length);
         }
 
-        /// <summary>
-        ///A test for CopyStreamUpToLimit where maxBytesToCopy is less than input.Length
-        ///</summary>
         [TestMethod()]
-        public void CopyStreamUpToLimitTest()
+        public void PartitionLengthTest()
         {
-            byte[] bytes = new byte[8];
-            new Random().NextBytes(bytes);
-            MemoryStream input = new MemoryStream(bytes);
-            MemoryStream output = new MemoryStream();
-            int maxBytesToCopy = 5;
-            byte[] copyBuffer = new byte[2];
-            AzureHelper_Accessor.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
-
-            int expectedOutputLength = Math.Min(maxBytesToCopy, bytes.Length);
-            Assert.AreEqual(expectedOutputLength, output.Length);
-
-            output.Position = 0;
-            for (int i = 0; i < output.Length; i++)
-            {
-                Assert.AreEqual(bytes[i], output.ReadByte());
-            }
-        }
-
-        /// <summary>
-        ///A test for CopyStreamUpToLimit where maxBytesToCopy is greater than input.Length
-        ///</summary>
-        [TestMethod()]
-        public void CopyStreamUpToLimitTest2()
-        {
-            byte[] bytes = new byte[8];
-            new Random().NextBytes(bytes);
-            MemoryStream input = new MemoryStream(bytes);
-            MemoryStream output = new MemoryStream();
-            int maxBytesToCopy = 100;
-            byte[] copyBuffer = new byte[2];
-            AzureHelper_Accessor.CopyStreamUpToLimit(input, output, maxBytesToCopy, copyBuffer);
-
-            int expectedOutputLength = Math.Min(maxBytesToCopy, bytes.Length);
-            Assert.AreEqual(expectedOutputLength, output.Length);
-
-            output.Position = 0;
-            for (int i = 0; i < output.Length; i++)
-            {
-                Assert.AreEqual(bytes[i], output.ReadByte());
-            }
+            int numElements = 5, numPartitions = 2, expectedPartitionLength = 3;
+            Assert.AreEqual(expectedPartitionLength,
+                AzureHelper.PartitionLength(numElements, numPartitions));
         }
     }
 }

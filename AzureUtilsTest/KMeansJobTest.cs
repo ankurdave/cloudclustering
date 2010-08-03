@@ -323,11 +323,12 @@ namespace AzureUtilsTest
             List<KMeansTaskData> taskDataList = new List<KMeansTaskData>();
             for (int i = 0; i < numQueueMessages; i++)
             {
-                AzureHelper.WaitForMessage(AzureHelper.WorkerRequestQueue, message => true, message =>
+                AzureHelper.ExponentialBackoff(() =>
+                    AzureHelper.PollForMessage(AzureHelper.WorkerRequestQueue, message => true, message =>
                 {
                     taskDataList.Add((KMeansTaskData)message);
                     return true;
-                }, 100, 100);
+                }));
             }
             return taskDataList;
         }

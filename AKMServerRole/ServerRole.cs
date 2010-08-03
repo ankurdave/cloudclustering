@@ -38,7 +38,10 @@ namespace AKMServerRole
 
             System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessNewJob(jobID={0})", jobData.JobID);
 
-            jobs[jobData.JobID] = new KMeansJob(jobData);
+            jobs[jobData.JobID] = new KMeansJob(jobData)
+            {
+                MachineID = "server"
+            };
             jobs[jobData.JobID].InitializeStorage();
             jobs[jobData.JobID].EnqueueTasks();
             
