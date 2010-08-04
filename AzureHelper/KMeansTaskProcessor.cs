@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 using Microsoft.WindowsAzure.ServiceRuntime;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace AzureUtils
 {
@@ -77,13 +79,19 @@ namespace AzureUtils
                 }
             });
 
-            // Combine the per-thread block lists
+            // Combine the per-thread block lists and write the full block list to a blob. Then include that as part of TaskResult
             List<string> blockIDs = new List<string>();
             foreach (string[] blockIDsFromThread in blockIDsPerThread)
             {
                 blockIDs.AddRange(blockIDsFromThread);
             }
-            TaskResult.PointsBlockList = blockIDs;
+            CloudBlob blockIDsBlob = AzureHelper.CreateBlob(task.JobID.ToString(), Guid.NewGuid().ToString());
+            using (Stream stream = blockIDsBlob.OpenWrite())
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                bf.Serialize(stream, blockIDs);
+            }
+            TaskResult.PointsBlockListBlob =  blockIDsBlob.Uri;
 
             // Total up the per-thread pointSumsPerCentroid
             TaskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();

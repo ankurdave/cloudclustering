@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using Microsoft.WindowsAzure.StorageClient;
 using System.Linq;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace AzureUtilsTest
 {
@@ -155,7 +157,12 @@ namespace AzureUtilsTest
 
             // Commit the blocks
             CloudBlockBlob newPointsBlob = AzureHelper.GetBlob(target.TaskResult.Points);
-            newPointsBlob.PutBlockList(target.TaskResult.PointsBlockList);
+            using (Stream stream = AzureHelper.GetBlob(target.TaskResult.PointsBlockListBlob).OpenRead())
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                List<string> pointsBlockList = bf.Deserialize(stream) as List<string>;
+                newPointsBlob.PutBlockList(pointsBlockList);
+            }
 
             using (ObjectStreamReader<ClusterPoint> stream = new ObjectStreamReader<ClusterPoint>(newPointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size))
             {

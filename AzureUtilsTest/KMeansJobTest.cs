@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Microsoft.WindowsAzure;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace AzureUtilsTest
 {
@@ -210,7 +211,13 @@ namespace AzureUtilsTest
             target.tasks.Add(new KMeansTask(taskData));
             
             KMeansTaskResult taskResult = new KMeansTaskResult(taskData);
-            taskResult.PointsBlockList = pointPartitionWriteStream.BlockList;
+            CloudBlob pointsBlockListBlob = AzureHelper.CreateBlob(jobData.JobID.ToString(), Guid.NewGuid().ToString());
+            using (Stream stream = pointsBlockListBlob.OpenWrite())
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                bf.Serialize(stream, pointPartitionWriteStream.BlockList);
+            }
+            taskResult.PointsBlockListBlob = pointsBlockListBlob.Uri;
             taskResult.NumPointsChanged = 2;
             Guid centroidID = Guid.NewGuid();
             taskResult.PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData> {

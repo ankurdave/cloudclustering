@@ -61,6 +61,11 @@ namespace AKMWebRole
                 logs = logs
                     .Where(log => log.MethodName == "ProcessNewTask");
             }
+            else
+            {
+                logs = logs
+                    .Where(log => log.MethodName != "InitializeStorage");
+            }
 
             logs = logs
                 .OrderBy(log => log.StartTime);

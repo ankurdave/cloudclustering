@@ -9,7 +9,7 @@ namespace AzureUtils
     public class KMeansTaskResult : KMeansTaskData
     {
         public int NumPointsChanged { get; set; }
-        public List<string> PointsBlockList { get; set; }
+        public Uri PointsBlockListBlob { get; set; }
 
         [NonSerialized]
         private Dictionary<Guid, PointsProcessedData> _pointsProcessedDataByCentroid;
@@ -21,7 +21,6 @@ namespace AzureUtils
             : base(task)
         {
             NumPointsChanged = 0;
-            PointsBlockList = new List<string>();
             PointsProcessedDataByCentroid = new Dictionary<Guid, PointsProcessedData>();
         }
 

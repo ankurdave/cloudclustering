@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using System.Security.Cryptography;
 using Microsoft.WindowsAzure.StorageClient;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace AzureUtils
 {
@@ -117,7 +118,15 @@ namespace AzureUtils
                 task.Running = false; // The task has returned a response, which means that it has stopped running
 
                 // Add the worker's updated points blocks
-                pointsBlockIDs.AddRange(taskResult.PointsBlockList);
+                if (taskResult.PointsBlockListBlob != null)
+                {
+                    using (Stream stream = AzureHelper.GetBlob(taskResult.PointsBlockListBlob).OpenRead())
+                    {
+                        BinaryFormatter bf = new BinaryFormatter();
+                        List<string> pointsBlockList = bf.Deserialize(stream) as List<string>;
+                        pointsBlockIDs.AddRange(pointsBlockList);
+                    }
+                }
 
                 // Copy out and integrate the data from the worker response
                 AddDataFromTaskResult(taskResult);
