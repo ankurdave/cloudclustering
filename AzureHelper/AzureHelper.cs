@@ -290,5 +290,17 @@ namespace AzureUtils
                 log.Centroids = centroids.Eval();
             AzureHelper.PerformanceLogger.Update(log);
         }
+
+        public static string GetLocalResourceRootPath(string localResourceName)
+        {
+            if (RoleEnvironment.IsAvailable)
+            {
+                return RoleEnvironment.GetLocalResource(localResourceName).RootPath;
+            }
+            else
+            {
+                return Environment.GetEnvironmentVariable("TEMP");
+            }
+        }
     }
 }

@@ -44,7 +44,7 @@ namespace AzureUtils
 
             System.Threading.Tasks.Parallel.For(0, numThreads, threadID =>
             {
-                using (ObjectCachedStreamReader<ClusterPoint> stream = new ObjectCachedStreamReader<ClusterPoint>(pointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, RoleEnvironment.GetLocalResource("cache").RootPath, task.JobID.ToString(), task.PartitionNumber, task.M, subPartitionNumber: threadID, subTotalPartitions: numThreads))
+                using (ObjectCachedStreamReader<ClusterPoint> stream = new ObjectCachedStreamReader<ClusterPoint>(pointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, AzureHelper.GetLocalResourceRootPath("cache"), task.JobID.ToString(), task.PartitionNumber, task.M, subPartitionNumber: threadID, subTotalPartitions: numThreads))
                 {
                     ObjectBlockWriter<ClusterPoint> writeStream = new ObjectBlockWriter<ClusterPoint>(pointsBlob, point => point.ToByteArray(), ClusterPoint.Size);
 
