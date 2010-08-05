@@ -21,9 +21,6 @@
                 Clusters (k):
                 <asp:TextBox ID="K" runat="server"></asp:TextBox>
                 <br />
-                Machines (m):
-                <asp:TextBox ID="M" runat="server"></asp:TextBox>
-                <br />
                 Max iterations:
                 <asp:TextBox ID="MaxIterationCount" runat="server">0</asp:TextBox>
                 &nbsp;(0 is unlimited)</p>
@@ -46,10 +43,11 @@
             <div class="visualization"><asp:Literal ID="Visualization" runat="server"></asp:Literal></div>
             
             <p><strong>Points:</strong> <asp:Label ID="PointsURI" runat="server" Text=""></asp:Label></p>
-            <table><asp:Label ID="Points" runat="server" Text=""></asp:Label></table>
 
             <p><strong>Centroids:</strong> <asp:Label ID="CentroidsURI" runat="server" Text=""></asp:Label></p>
-            <table><asp:Label ID="Centroids" runat="server" Text=""></asp:Label></table>
+
+
+            <table><tr><th>Worker ID</th></tr><asp:Literal ID="Workers" runat="server"></asp:Literal></table>
 
             <asp:Timer ID="UpdateTimer" runat="server" Enabled="False" Interval="1000" 
                 ontick="UpdateTimer_Tick">

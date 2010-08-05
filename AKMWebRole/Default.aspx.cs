@@ -64,13 +64,12 @@ namespace AKMWebRole
                 pointsBlobUri = pointsBlob.Uri;
             }
 
-            int nInt = 0, kInt = 0, mInt = 0, maxIterationCountInt = 0;
+            int nInt = 0, kInt = 0, maxIterationCountInt = 0;
             int.TryParse(N.Text, out nInt);
             int.TryParse(K.Text, out kInt);
-            int.TryParse(M.Text, out mInt);
             int.TryParse(MaxIterationCount.Text, out maxIterationCountInt);
 
-            KMeansJobData jobData = new KMeansJobData(jobID, nInt, pointsBlobUri, kInt, mInt, maxIterationCountInt, DateTime.Now)
+            KMeansJobData jobData = new KMeansJobData(jobID, nInt, pointsBlobUri, kInt, maxIterationCountInt, DateTime.Now)
             {
                 ProgressEmail = ProgressEmail.Text
             };
@@ -81,13 +80,13 @@ namespace AKMWebRole
 
         private void ClearIndicators()
         {
-            Visualization.Text = Points.Text = PointsURI.Text = Centroids.Text = CentroidsURI.Text = Status.Text = StatusProgress.Text = DownloadLog.NavigateUrl = "";
+            Visualization.Text = PointsURI.Text = CentroidsURI.Text = Workers.Text = Status.Text = StatusProgress.Text = DownloadLog.NavigateUrl = "";
             DownloadLog.Enabled = false;
         }
 
         private void FreezeUnfreezeUI(bool freeze = true)
         {
-            Run.Enabled = N.Enabled = K.Enabled = M.Enabled = MaxIterationCount.Enabled = PointsFile.Enabled = PointsBlob.Enabled = ProgressEmail.Enabled = !freeze;
+            Run.Enabled = N.Enabled = K.Enabled = MaxIterationCount.Enabled = PointsFile.Enabled = PointsBlob.Enabled = ProgressEmail.Enabled = !freeze;
         }
 
         private void FreezeUI()
@@ -127,20 +126,17 @@ namespace AKMWebRole
 
             UpdatePanel1.Update();
 
-            AzureHelper.PollForMessage(AzureHelper.ServerResponseQueue,
-                message => ((KMeansJobResult)message).JobID == jobID,
-                ShowResults);
+            AzureHelper.PollForMessage<KMeansJobResult>(AzureHelper.ServerResponseQueue,
+                ShowResults,
+                condition: message => message.JobID == jobID);
         }
 
         private void UpdateStatus(Guid jobID, bool final)
         {
             System.Diagnostics.Trace.TraceInformation("[WebRole] ShowStatus(), JobID={0}", jobID);
 
-            IEnumerable<PerformanceLog> logs;
-            logs = GetLogs(jobID, true);
-            if (logs == null || logs.Count() == 0)
-                return;
-
+            IEnumerable<PerformanceLog> logs = GetLogs(jobID, true);
+            
             // Show all logs
             Stats.Text = string.Empty;
             foreach (PerformanceLog log in logs)
@@ -180,6 +176,21 @@ namespace AKMWebRole
             {
                 Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
             }
+
+            // Update the list of workers
+            IEnumerable<Worker> workersList = GetWorkers();
+            Workers.Text = string.Empty;
+            foreach (Worker worker in workersList)
+            {
+                Workers.Text += string.Format("<tr><td>{0}</td></tr>",
+                    worker.WorkerID
+                );
+            }
+        }
+
+        private IEnumerable<Worker> GetWorkers()
+        {
+            return AzureHelper.WorkerStatsReporter.WorkerStats.Execute().ToList();
         }
 
         private IEnumerable<PerformanceLog> GetLogs(Guid jobID, bool final)
@@ -212,10 +223,8 @@ namespace AKMWebRole
             return logs;
         }
 
-        private bool ShowResults(AzureMessage message)
+        private bool ShowResults(KMeansJobResult jobResult)
         {
-            KMeansJobResult jobResult = message as KMeansJobResult;
-
             System.Diagnostics.Trace.TraceInformation("[WebRole] ShowResults(), JobID={0}", jobResult.JobID);
 
             StopWaitingForResults();
@@ -233,15 +242,12 @@ namespace AKMWebRole
         private void UpdatePointsCentroids(CloudBlob points, CloudBlob centroids, bool final)
         {
             StringBuilder visualization = new StringBuilder();
-            StringBuilder centroidsString = new StringBuilder();
-            StringBuilder pointsString = new StringBuilder();
-
+            
             using (ObjectStreamReader<ClusterPoint> pointsStream = new ObjectStreamReader<ClusterPoint>(points, ClusterPoint.FromByteArray, ClusterPoint.Size))
             {
                 int pointIndex = 0;
                 foreach (ClusterPoint p in pointsStream)
                 {
-                    pointsString.AppendFormat("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>", p.X, p.Y, p.CentroidID);
                     visualization.AppendFormat("<div class=\"point\" style=\"top:{0}px;left:{1}px;background-color:{2}\"></div>",
                         PointUnitsToPixels(p.Y),
                         PointUnitsToPixels(p.X),
@@ -257,7 +263,6 @@ namespace AKMWebRole
             {
                 foreach (Centroid p in centroidsStream)
                 {
-                    centroidsString.AppendFormat("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>", p.ID, p.X, p.Y);
                     visualization.AppendFormat("<div class=\"centroid\" style=\"top:{0}px;left:{1}px;background-color:{2}\"></div>",
                         PointUnitsToPixels(p.Y),
                         PointUnitsToPixels(p.X),
@@ -265,8 +270,6 @@ namespace AKMWebRole
                 }
             }
 
-            Points.Text = pointsString.ToString();
-            Centroids.Text = centroidsString.ToString();
             Visualization.Text = visualization.ToString();
 
             PointsURI.Text = points.Uri.ToString();

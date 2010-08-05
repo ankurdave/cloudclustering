@@ -12,17 +12,20 @@ namespace AKMServerRole
 {
     public class ServerRole : RoleEntryPoint
     {
+        private Dictionary<string, Worker> workers = new Dictionary<string, Worker>();
         private Dictionary<Guid, KMeansJob> jobs = new Dictionary<Guid, KMeansJob>();
 
         public override void Run()
         {
             AzureHelper.ClearQueues();
+            AzureHelper.WorkerStatsReporter.Clear();
 
             while (true)
             {
                 System.Diagnostics.Trace.TraceInformation("[ServerRole] Waiting for messages...");
-                AzureHelper.PollForMessage(AzureHelper.ServerRequestQueue, message => true, ProcessNewJob, visibilityTimeoutSeconds:3600);
-                AzureHelper.PollForMessage(AzureHelper.WorkerResponseQueue, message => true, ProcessWorkerResponse, visibilityTimeoutSeconds:3600);
+                AzureHelper.PollForMessage<ServerControlMessage>(AzureHelper.ServerControlQueue, ProcessNewWorker);
+                AzureHelper.PollForMessage<KMeansJobData>(AzureHelper.ServerRequestQueue, ProcessNewJob);
+                AzureHelper.PollForMessage<KMeansTaskResult>(AzureHelper.WorkerResponseQueue, ProcessWorkerResponse);
             
                 Thread.Sleep(500);
             }
@@ -32,18 +35,13 @@ namespace AKMServerRole
         /// Handles a request for a new k-means job. Sets up a new job and starts it off.
         /// </summary>
         /// <param name="message">The job request. Must be of type KMeansJobData.</param>
-        private bool ProcessNewJob(AzureMessage message)
+        private bool ProcessNewJob(KMeansJobData jobData)
         {
-            KMeansJobData jobData = message as KMeansJobData;
-
             System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessNewJob(jobID={0})", jobData.JobID);
 
-            jobs[jobData.JobID] = new KMeansJob(jobData)
-            {
-                MachineID = "server"
-            };
+            jobs[jobData.JobID] = new KMeansJob(jobData, "server");
             jobs[jobData.JobID].InitializeStorage();
-            jobs[jobData.JobID].EnqueueTasks();
+            jobs[jobData.JobID].EnqueueTasks(workers);
             
             return true;
         }
@@ -52,9 +50,8 @@ namespace AKMServerRole
         /// Handles a worker response as part of a running k-means job. Looks up the appropriate job and passes the worker's response to it.
         /// </summary>
         /// <param name="message">The worker response. Must be of type KMeansTaskResult.</param>
-        private bool ProcessWorkerResponse(AzureMessage message)
+        private bool ProcessWorkerResponse(KMeansTaskResult taskResult)
         {
-            KMeansTaskResult taskResult = message as KMeansTaskResult;
             taskResult.RestorePointsProcessedDataByCentroid();
 
             // Make sure the job belongs to this server
@@ -63,7 +60,23 @@ namespace AKMServerRole
 
             System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessWorkerResponse(jobID={0}, taskID={1}, iterationCount={2})", taskResult.JobID, taskResult.TaskID, jobs[taskResult.JobID].IterationCount);
 
-            return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult);
+            return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult, workers);
+        }
+
+        private bool ProcessNewWorker(ServerControlMessage controlMessage)
+        {
+            System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessNewWorker(machineID={0})", controlMessage.MachineID);
+
+            // Make sure this isn't a duplicate message
+            if (workers.ContainsKey(controlMessage.MachineID))
+                return true;
+
+            Worker worker = new Worker(controlMessage.MachineID);
+            
+            workers[controlMessage.MachineID] = worker;
+            AzureHelper.WorkerStatsReporter.Insert(worker);
+
+            return true;
         }
 
         public override bool OnStart()

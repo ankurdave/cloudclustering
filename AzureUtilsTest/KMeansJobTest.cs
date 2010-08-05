@@ -76,8 +76,8 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void InitializeStorageTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, null, 4, 6, 10, DateTime.Now);
-            KMeansJob target = new KMeansJob(jobData);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 2, null, 4, 10, DateTime.Now);
+            KMeansJob target = new KMeansJob(jobData, "server");
             target.InitializeStorage();
             
             // Verify that the created containers and blobs actually exist
@@ -157,8 +157,8 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void RecalculateCentroidsTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, null, 1, 1, 10, DateTime.Now);
-            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 1, null, 1, 10, DateTime.Now);
+            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData, "server");
             target.InitializeStorage();
 
             byte[] cBytes = new byte[Centroid.Size];
@@ -194,10 +194,9 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void ProcessWorkerResponseTest()
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 1, 10, DateTime.Now);
-            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 10, DateTime.Now);
+            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData, "server");
             target.InitializeStorage();
-            target.EnqueueTasks();
 
             // Upload a block with an arbitrary ClusterPoint, so we can verify it gets copied
             ObjectBlockWriter<ClusterPoint> pointPartitionWriteStream = new ObjectBlockWriter<ClusterPoint>(target.Points, point => point.ToByteArray(), ClusterPoint.Size);
@@ -205,7 +204,7 @@ namespace AzureUtilsTest
             pointPartitionWriteStream.Write(arbitraryPoint);
             pointPartitionWriteStream.FlushBlock();
 
-            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), 0, target.Centroids.Uri, DateTime.Now, 0);
+            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), 0, 1, target.Centroids.Uri, DateTime.Now, 0);
 
             target.tasks.Clear();
             target.tasks.Add(new KMeansTask(taskData));
@@ -227,7 +226,7 @@ namespace AzureUtilsTest
                     }
                 }
             };
-            target.ProcessWorkerResponse(taskResult);
+            target.ProcessWorkerResponse(taskResult, new Dictionary<string, Worker>());
             
             // Verify that the first ClusterPoint in Points is indeed equal to arbitraryPoint
             using (ObjectStreamReader<ClusterPoint> pointsStream = new ObjectStreamReader<ClusterPoint>(target.Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
@@ -284,23 +283,26 @@ namespace AzureUtilsTest
         }
 
         [TestMethod()]
-        public void MultiIterationJobTest() // should fail because it's not updated
+        public void MultiIterationJobTest() // TODO: make this unit test check things in more detail
         {
-            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 2, 2, DateTime.Now);
-            KMeansJob_Accessor job = new KMeansJob_Accessor(jobData);
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 2, DateTime.Now);
+            Dictionary<string, Worker> workers = new Dictionary<string, Worker> {
+                { "a", new Worker("a") },
+                { "b", new Worker("b") }
+            };
+            KMeansJob_Accessor job = new KMeansJob_Accessor(jobData, "server");
             
             // First iteration
             job.InitializeStorage();
-            job.EnqueueTasks();
+            job.EnqueueTasks(workers);
 
             for (int i = 0; i < jobData.MaxIterationCount; i++)
             {
-                //List<KMeansTaskData> taskDataList = GetKMeansTasksFromWorkerRequestQueue(jobData.M);
                 CheckWorkerRequests(job,
                     (from task in job.tasks
                     where task.Running
                     select task.TaskData),
-                    jobData.M, job.Points);
+                    workers.Count, job.Points);
 
                 // Create the worker results and send them to the job
                 List<KMeansTaskResult> results = new List<KMeansTaskResult>();
@@ -313,7 +315,7 @@ namespace AzureUtilsTest
 
                 foreach (var result in results)
                 {
-                    job.ProcessWorkerResponse(result);
+                    job.ProcessWorkerResponse(result, workers);
                 }
             }
         }
@@ -323,21 +325,6 @@ namespace AzureUtilsTest
             // Make sure there are enough taskDatas in the list
             Assert.AreEqual(expectedNumRequests, taskDataList.Count());
             Assert.IsTrue(taskDataList.Where(element => element == null).Count() == 0);
-        }
-
-        private static List<KMeansTaskData> GetKMeansTasksFromWorkerRequestQueue(int numQueueMessages)
-        {
-            List<KMeansTaskData> taskDataList = new List<KMeansTaskData>();
-            for (int i = 0; i < numQueueMessages; i++)
-            {
-                AzureHelper.ExponentialBackoff(() =>
-                    AzureHelper.PollForMessage(AzureHelper.WorkerRequestQueue, message => true, message =>
-                {
-                    taskDataList.Add((KMeansTaskData)message);
-                    return true;
-                }));
-            }
-            return taskDataList;
         }
     }
 }

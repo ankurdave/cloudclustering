@@ -9,11 +9,11 @@ namespace AzureUtils
 {
     public class ObjectStreamReader<T> : IEnumerable<T>, IDisposable
     {
-        private Stream stream;
-        private Func<byte[], T> objectDeserializer;
-        private long readStart;
-        private long readEnd;
-        private int objectSize;
+        protected Stream stream;
+        protected Func<byte[], T> objectDeserializer;
+        protected long readStart;
+        protected long readEnd;
+        protected int objectSize;
 
         public ObjectStreamReader(CloudBlob blob, Func<byte[], T> objectDeserializer, int objectSize,
             int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
@@ -70,7 +70,7 @@ namespace AzureUtils
         }
 
         #region IEnumerable code
-        public IEnumerator<T> GetEnumerator()
+        public virtual IEnumerator<T> GetEnumerator()
         {
             stream.Position = readStart;
             byte[] bytes = new byte[objectSize];

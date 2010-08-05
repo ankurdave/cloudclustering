@@ -71,13 +71,12 @@ namespace AzureUtilsTest
         [TestMethod()]
         public void ToFromBinaryTest()
         {
-            KMeansJobData target = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 3, 10, DateTime.Now);
+            KMeansJobData target = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 10, DateTime.Now);
             byte[] bytes = target.ToBinary();
             KMeansJobData targetNew = KMeansJobData.FromMessage(new CloudQueueMessage(bytes)) as KMeansJobData;
 
             Assert.AreEqual(target.JobID, targetNew.JobID);
             Assert.AreEqual(target.K, targetNew.K);
-            Assert.AreEqual(target.M, targetNew.M);
             Assert.AreEqual(target.N, targetNew.N);
         }
     }

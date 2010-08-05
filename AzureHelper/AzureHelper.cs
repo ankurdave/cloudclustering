@@ -16,8 +16,8 @@ namespace AzureUtils
     {
         public const string ServerRequestQueue = "serverrequest";
         public const string WorkerResponseQueue = "workerresponse";
-        public const string WorkerRequestQueue = "workerrequest";
         public const string ServerResponseQueue = "serverresponse";
+        public const string ServerControlQueue = "servercontrol";
         public const string PointsBlob = "points";
         public const string CentroidsBlob = "centroids";
 
@@ -63,6 +63,19 @@ namespace AzureUtils
             }
         }
 
+        private static WorkerStatsContext _workerStatsReporter;
+        public static WorkerStatsContext WorkerStatsReporter
+        {
+            get
+            {
+                if (_workerStatsReporter == null)
+                {
+                    _workerStatsReporter = new WorkerStatsContext();
+                }
+                return _workerStatsReporter;
+            }
+        }
+
         #region Queue-related methods
         public static void EnqueueMessage(string queueName, AzureMessage message, bool async = false)
         {
@@ -81,7 +94,7 @@ namespace AzureUtils
             }
         }
 
-        public static bool PollForMessage(string queueName, Func<AzureMessage, bool> condition, Func<AzureMessage, bool> action, int visibilityTimeoutSeconds = 30)
+        public static bool PollForMessage<T>(string queueName, Func<T, bool> action, int visibilityTimeoutSeconds = 30, Func<T, bool> condition = null) where T : AzureMessage
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
 
@@ -92,9 +105,9 @@ namespace AzureUtils
             if (queueMessage == null)
                 return false;
 
-            AzureMessage message = AzureMessage.FromMessage(queueMessage);
+            T message = AzureMessage.FromMessage(queueMessage) as T;
 
-            if (!condition.Invoke(message))
+            if (condition != null && !condition.Invoke(message))
                 return false;
 
             if (!action.Invoke(message))
@@ -125,7 +138,7 @@ namespace AzureUtils
         public static void ClearQueues()
         {
             CloudQueueClient client = StorageAccount.CreateCloudQueueClient();
-            string[] queues = { ServerRequestQueue, ServerResponseQueue, WorkerRequestQueue, WorkerResponseQueue };
+            string[] queues = { ServerRequestQueue, ServerResponseQueue, WorkerResponseQueue };
 
             foreach (string queueName in queues)
             {
@@ -133,6 +146,11 @@ namespace AzureUtils
                 queue.CreateIfNotExist();
                 queue.Clear();
             }
+        }
+
+        public static string GetWorkerRequestQueue(string machineID)
+        {
+            return "workerrequest" + machineID;
         }
         #endregion
 

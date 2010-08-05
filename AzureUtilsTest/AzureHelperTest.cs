@@ -75,16 +75,16 @@ namespace AzureUtilsTest
         public void EnqueueMessagePollForMessageTest()
         {
             string queueName = Guid.NewGuid().ToString();
-            KMeansJobData message = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 3, 10, DateTime.Now);
+            KMeansJobData message = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 10, DateTime.Now);
             bool async = false;
 
             AzureHelper.EnqueueMessage(queueName, message, async);
 
             KMeansJobData foundMessage = null;
             AzureHelper.ExponentialBackoff(() =>
-                AzureHelper.PollForMessage(queueName, msg => true, msg =>
+                AzureHelper.PollForMessage<KMeansJobData>(queueName, msg =>
                 {
-                    foundMessage = msg as KMeansJobData;
+                    foundMessage = msg;
                     return true;
                 }),
                 firstDelayMilliseconds:100,
@@ -130,7 +130,7 @@ namespace AzureUtilsTest
             queue.CreateIfNotExist();
             queue.Clear();
 
-            AzureMessage message = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 3, 10, DateTime.Now);
+            AzureMessage message = new KMeansJobData(Guid.NewGuid(), 1, null, 2, 10, DateTime.Now);
             queue.AddMessage(new CloudQueueMessage(message.ToBinary()));
             Thread.Sleep(2000);
             AzureMessage received = KMeansJobData.FromMessage(queue.GetMessage());
@@ -139,7 +139,6 @@ namespace AzureUtilsTest
                 receivedCast = received as KMeansJobData;
             Assert.AreEqual(messageCast.JobID, receivedCast.JobID);
             Assert.AreEqual(messageCast.K, receivedCast.K);
-            Assert.AreEqual(messageCast.M, receivedCast.M);
             Assert.AreEqual(messageCast.N, receivedCast.N);
         }
 

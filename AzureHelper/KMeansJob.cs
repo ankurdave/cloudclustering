@@ -25,8 +25,10 @@ namespace AzureUtils
         public int IterationCount { get; private set; }
         public string MachineID { get; set; }
 
-        public KMeansJob(KMeansJobData jobData) {
+        public KMeansJob(KMeansJobData jobData, string machineID) {
             this.jobData = jobData;
+            this.MachineID = machineID;
+
             this.IterationCount = 0;
         }
 
@@ -84,18 +86,20 @@ namespace AzureUtils
         /// <summary>
         /// Enqueues M messages into a queue. Each message is an instruction to a worker to process a partition of the k-means data.
         /// </summary>
-        public void EnqueueTasks()
+        public void EnqueueTasks(Dictionary<string, Worker> workers)
         {
             AzureHelper.LogPerformance(() =>
             {
-                for (int i = 0; i < jobData.M; i++)
+                int workerNumber = 0;
+
+                foreach (Worker worker in workers.Select(pair => pair.Value))
                 {
-                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), i, Centroids.Uri, DateTime.UtcNow, IterationCount);
+                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), workerNumber++, workers.Count, Centroids.Uri, DateTime.UtcNow, IterationCount);
                     taskData.Points = Points.Uri;
 
                     tasks.Add(new KMeansTask(taskData));
 
-                    AzureHelper.EnqueueMessage(AzureHelper.WorkerRequestQueue, taskData, true);
+                    AzureHelper.EnqueueMessage(AzureHelper.GetWorkerRequestQueue(worker.WorkerID), taskData, true);
                 }
             }, jobData.JobID.ToString(), methodName: "EnqueueTasks", iterationCount: IterationCount, points: Points.Uri.ToString(), centroids: Centroids.Uri.ToString(), machineID: MachineID);
         }
@@ -105,12 +109,12 @@ namespace AzureUtils
         /// </summary>
         /// <param name="message"></param>
         /// <returns>False if the given taskData result has already been counted, true otherwise.</returns>
-        public bool ProcessWorkerResponse(KMeansTaskResult taskResult)
+        public bool ProcessWorkerResponse(KMeansTaskResult taskResult, Dictionary<string, Worker> workers)
         {
             // Make sure we're actually still waiting for a result for this taskData
             // If not, this might be a duplicate queue message
             if (!TaskResultMatchesRunningTask(taskResult))
-                return false;
+                return true;
 
             AzureHelper.LogPerformance(() =>
             {
@@ -135,7 +139,7 @@ namespace AzureUtils
             // If this is the last worker to return, this iteration is done and we should start the next one
             if (NoMoreRunningTasks())
             {
-                NextIteration();
+                NextIteration(workers);
             }
 
             return true;
@@ -164,7 +168,7 @@ namespace AzureUtils
         /// <summary>
         /// Checks whether to move into the next iteration, and performs the appropriate actions to make it happen.
         /// </summary>
-        private void NextIteration()
+        private void NextIteration(Dictionary<string, Worker> workers)
         {
             System.Diagnostics.Trace.TraceInformation("[ServerRole] NextIteration() JobID={0}", jobData.JobID);
 
@@ -182,7 +186,7 @@ namespace AzureUtils
 
                 if (!MaxIterationCountExceeded())
                 {
-                    EnqueueTasks();
+                    EnqueueTasks(workers);
                 }
                 else
                 {

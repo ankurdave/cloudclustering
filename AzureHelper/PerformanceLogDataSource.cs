@@ -47,6 +47,7 @@ namespace AzureUtils
             }
             catch (InvalidOperationException e) // Context is already tracking the entity
             {
+                System.Diagnostics.Trace.WriteLine("Can't attach to entity: " + e.ToString());
             }
 
             ServiceContext.UpdateObject(item);

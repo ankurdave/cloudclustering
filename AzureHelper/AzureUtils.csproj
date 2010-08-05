@@ -60,6 +60,7 @@
     <Compile Include="KMeansTaskProcessor.cs" />
     <Compile Include="Lazy.cs" />
     <Compile Include="ObjectBlockWriter.cs" />
+    <Compile Include="ObjectCachedStreamReader.cs" />
     <Compile Include="ObjectStreamReader.cs" />
     <Compile Include="ObjectStreamWriter.cs" />
     <Compile Include="ObjectWriter.cs" />
@@ -72,6 +73,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="KMeansJobData.cs" />
     <Compile Include="KMeansJobResult.cs" />
+    <Compile Include="ServerControlMessage.cs" />
+    <Compile Include="Worker.cs" />
+    <Compile Include="WorkerStatsContext.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

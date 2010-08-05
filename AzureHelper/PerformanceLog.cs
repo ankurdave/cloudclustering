@@ -9,8 +9,10 @@ namespace AzureUtils
     public class PerformanceLog : TableServiceEntity
     {
         public PerformanceLog(string jobID, string methodName, DateTime startTime, DateTime endTime)
-            : base(jobID, Guid.NewGuid().ToString())
+            : base()
         {
+            this.JobID = jobID;
+            this.RowKey = Guid.NewGuid().ToString();
             this.MethodName = methodName;
             this.StartTime = startTime;
             this.EndTime = endTime;
@@ -21,7 +23,7 @@ namespace AzureUtils
             this.MachineID = string.Empty;
         }
 
-        public PerformanceLog()
+        /*public PerformanceLog()
             : base()
         {
             this.MethodName = string.Empty;
@@ -29,6 +31,18 @@ namespace AzureUtils
             this.Points = string.Empty;
             this.Centroids = string.Empty;
             this.MachineID = string.Empty;
+        }*/
+
+        public string JobID
+        {
+            get
+            {
+                return PartitionKey;
+            }
+            set
+            {
+                PartitionKey = value;
+            }
         }
 
         public string MethodName { get; set; }

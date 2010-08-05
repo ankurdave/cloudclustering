@@ -14,6 +14,9 @@
       <Setting name="DiagnosticsConnectionString" />
       <Setting name="DataConnectionString" />
     </ConfigurationSettings>
+    <LocalResources>
+      <LocalStorage name="cache" sizeInMB="250000" />
+    </LocalResources>
   </WorkerRole>
   <WorkerRole name="AKMServerRole">
     <ConfigurationSettings>

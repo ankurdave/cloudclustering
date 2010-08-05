@@ -14,21 +14,20 @@ namespace AKMWorkerRole
 {
     public class WorkerRole : RoleEntryPoint
     {
-        private string machineID = Guid.NewGuid().ToString();
+        private string machineID;
 
         public override void Run()
         {
             while (true)
             {
                 System.Diagnostics.Trace.TraceInformation("[WorkerRole] Waiting for messages...");
-                AzureHelper.PollForMessage(AzureHelper.WorkerRequestQueue, message => true, ProcessNewTask, visibilityTimeoutSeconds:3600);
+                AzureHelper.PollForMessage<KMeansTaskData>(AzureHelper.GetWorkerRequestQueue(machineID), ProcessNewTask, visibilityTimeoutSeconds:3600);
                 Thread.Sleep(500);
             }
         }
 
-        private bool ProcessNewTask(AzureMessage message)
+        private bool ProcessNewTask(KMeansTaskData task)
         {
-            KMeansTaskData task = message as KMeansTaskData;
             System.Diagnostics.Trace.TraceInformation("[WorkerRole] ProcessNewTask(jobID={1}, taskID={0})", task.TaskID, task.JobID);
 
             AzureHelper.LogPerformance(() =>
@@ -56,7 +55,18 @@ namespace AKMWorkerRole
             // see the MSDN topic at http://go.microsoft.com/fwlink/?LinkId=166357.
             RoleEnvironment.Changing += RoleEnvironmentChanging;
 
+            InitializeToServer();
+
             return base.OnStart();
+        }
+
+        private void InitializeToServer()
+        {
+            // Give ourselves a machine ID
+            this.machineID = Guid.NewGuid().ToString();
+
+            // Announce ourselves to the server
+            AzureHelper.EnqueueMessage(AzureHelper.ServerControlQueue, new ServerControlMessage(machineID));
         }
 
         private void RoleEnvironmentChanging(object sender, RoleEnvironmentChangingEventArgs e)
