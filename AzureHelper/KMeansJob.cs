@@ -99,7 +99,7 @@ namespace AzureUtils
 
                     tasks.Add(new KMeansTask(taskData));
 
-                    AzureHelper.EnqueueMessage(AzureHelper.GetWorkerRequestQueue(worker.WorkerID), taskData, true);
+                    AzureHelper.EnqueueMessage(AzureHelper.GetWorkerRequestQueue(worker.PartitionKey), taskData, true);
                 }
             }, jobData.JobID.ToString(), methodName: "EnqueueTasks", iterationCount: IterationCount, points: Points.Uri.ToString(), centroids: Centroids.Uri.ToString(), machineID: MachineID);
         }

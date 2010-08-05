@@ -136,45 +136,47 @@ namespace AKMWebRole
             System.Diagnostics.Trace.TraceInformation("[WebRole] ShowStatus(), JobID={0}", jobID);
 
             IEnumerable<PerformanceLog> logs = GetLogs(jobID, true);
-            
-            // Show all logs
-            Stats.Text = string.Empty;
-            foreach (PerformanceLog log in logs)
+            if (logs != null && logs.Count() > 0)
             {
-                Stats.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
-                    log.IterationCount,
-                    log.MethodName,
-                    (log.EndTime - log.StartTime).TotalSeconds);
-            }
+                // Show all logs
+                Stats.Text = string.Empty;
+                foreach (PerformanceLog log in logs)
+                {
+                    Stats.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
+                        log.IterationCount,
+                        log.MethodName,
+                        (log.EndTime - log.StartTime).TotalSeconds);
+                }
 
-            // Show the group stats
-            var logsByMethod = logs.GroupBy(log => log.MethodName);
-            StatsSummary.Text = string.Empty;
-            foreach (IGrouping<string, PerformanceLog> logGroup in logsByMethod)
-            {
-                StatsSummary.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>",
-                    logGroup.Key,
-                    logGroup.Min(log => (log.EndTime - log.StartTime).TotalSeconds),
-                    logGroup.Average(log => (log.EndTime - log.StartTime).TotalSeconds),
-                    logGroup.Max(log => (log.EndTime - log.StartTime).TotalSeconds),
-                    logGroup.Count());
-            }
+                // Show the group stats
+                var logsByMethod = logs.GroupBy(log => log.MethodName);
+                StatsSummary.Text = string.Empty;
+                foreach (IGrouping<string, PerformanceLog> logGroup in logsByMethod)
+                {
+                    StatsSummary.Text += string.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td></tr>",
+                        logGroup.Key,
+                        logGroup.Min(log => (log.EndTime - log.StartTime).TotalSeconds),
+                        logGroup.Average(log => (log.EndTime - log.StartTime).TotalSeconds),
+                        logGroup.Max(log => (log.EndTime - log.StartTime).TotalSeconds),
+                        logGroup.Count());
+                }
 
-            // Update the points and centroids displays
-            try
-            {
-                UpdatePointsCentroids(
-                    AzureHelper.GetBlob(logs.First().PartitionKey, AzureHelper.PointsBlob),
-                    AzureHelper.GetBlob(logs.First().PartitionKey, AzureHelper.CentroidsBlob),
-                    final);
-            }
-            catch (StorageClientException e)
-            {
-                Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
-            }
-            catch (IOException e)
-            {
-                Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
+                // Update the points and centroids displays
+                try
+                {
+                    UpdatePointsCentroids(
+                        AzureHelper.GetBlob(logs.First().PartitionKey, AzureHelper.PointsBlob),
+                        AzureHelper.GetBlob(logs.First().PartitionKey, AzureHelper.CentroidsBlob),
+                        final);
+                }
+                catch (StorageClientException e)
+                {
+                    Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
+                }
+                catch (IOException e)
+                {
+                    Trace.Write("Information", "Updating points and centroids failed. Will try again later.", e);
+                }
             }
 
             // Update the list of workers
@@ -183,7 +185,7 @@ namespace AKMWebRole
             foreach (Worker worker in workersList)
             {
                 Workers.Text += string.Format("<tr><td>{0}</td></tr>",
-                    worker.WorkerID
+                    worker.PartitionKey
                 );
             }
         }

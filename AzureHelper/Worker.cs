@@ -9,21 +9,13 @@ namespace AzureUtils
     public class Worker : TableServiceEntity
     {
         public Worker(string workerID)
-            : base()
+            : base(workerID, Guid.NewGuid().ToString())
         {
-            this.WorkerID = workerID;
         }
 
-        public string WorkerID
+        public Worker()
+            : base()
         {
-            get
-            {
-                return PartitionKey;
-            }
-            set
-            {
-                PartitionKey = value;
-            }
         }
     }
 }

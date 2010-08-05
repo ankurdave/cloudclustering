@@ -56,7 +56,8 @@ namespace AzureUtils
 
         private void DeleteAllRows()
         {
-            foreach (Worker worker in WorkerStats.Execute())
+            IEnumerable<Worker> rows = WorkerStats.Execute();
+            foreach (Worker worker in rows)
             {
                 AttachTo(WorkerStatsTableName, worker);
                 DeleteObject(worker);
@@ -74,7 +75,7 @@ namespace AzureUtils
 
         public void Clear()
         {
-            DeleteRecreateTable();
+            DeleteAllRows();
         }
     }
 }
