@@ -31,6 +31,7 @@
             
             <p><asp:Button ID="Run" runat="server" onclick="Run_Click" Text="Run K-Means" /></p>
             <p><asp:Button ID="ClearBlobs" runat="server" onclick="ClearBlobs_Click" Text="Clear Blobs" /></p>
+            <p><asp:Button ID="Refresh" runat="server" Text="Refresh" onclick="Refresh_Click" /></p>
 
             <div style="float:right">
                 <p><strong>Status:</strong> <asp:Label ID="Status" runat="server" Text="Click Run K-Means to see results."></asp:Label><asp:Label ID="StatusProgress" runat="server" Text=""></asp:Label></p>
@@ -49,7 +50,7 @@
 
             <table><tr><th>Worker ID</th></tr><asp:Literal ID="Workers" runat="server"></asp:Literal></table>
 
-            <asp:Timer ID="UpdateTimer" runat="server" Enabled="False" Interval="1000" 
+            <asp:Timer ID="UpdateTimer" runat="server" Enabled="False" Interval="2000" 
                 ontick="UpdateTimer_Tick">
             </asp:Timer>
         </ContentTemplate>

@@ -46,6 +46,10 @@ namespace AzureUtils
             {
                 using (ObjectCachedStreamReader<ClusterPoint> stream = new ObjectCachedStreamReader<ClusterPoint>(pointsBlob, ClusterPoint.FromByteArray, ClusterPoint.Size, AzureHelper.GetLocalResourceRootPath("cache"), task.JobID.ToString(), task.PartitionNumber, task.M, subPartitionNumber: threadID, subTotalPartitions: numThreads))
                 {
+                    // Log cache hit or miss
+                    System.Diagnostics.Trace.TraceInformation("[WorkerRole] Cache {1} for file {0}", stream.CacheFilePath, stream.UsingCache ? "hit" : "miss");
+
+                    // Process the points
                     ObjectBlockWriter<ClusterPoint> writeStream = new ObjectBlockWriter<ClusterPoint>(pointsBlob, point => point.ToByteArray(), ClusterPoint.Size);
 
                     foreach (var point in stream)

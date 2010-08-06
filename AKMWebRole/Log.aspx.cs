@@ -40,8 +40,14 @@ namespace AKMWebRole
 
         private void PrintSummary(IEnumerable<PerformanceLog> logs)
         {
+            int targetIteration = 0;
+            if (!string.IsNullOrEmpty(Request.Params["iteration"]))
+            {
+                targetIteration = int.Parse(Request.Params["iteration"]);
+            }
+
             logs = logs
-                    .Where(log => log.IterationCount == 0);
+                    .Where(log => log.IterationCount == targetIteration);
 
             if (string.IsNullOrEmpty(Request.Params["allRoles"]))
             {

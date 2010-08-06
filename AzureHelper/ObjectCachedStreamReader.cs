@@ -9,8 +9,8 @@ namespace AzureUtils
 {
     public class ObjectCachedStreamReader<T> : ObjectStreamReader<T>
     {
-        private string cacheFilePath;
-        private bool cacheAlreadyExists;
+        public string CacheFilePath { get; private set; }
+        public bool UsingCache { get; private set; }
 
         public ObjectCachedStreamReader(CloudBlob blob, Func<byte[], T> objectDeserializer, int objectSize,
             string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
@@ -22,8 +22,8 @@ namespace AzureUtils
             string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
             : base(UseStreamOrCachedFile(stream, GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber)), objectDeserializer, objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions)
         {
-            this.cacheFilePath = GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
-            this.cacheAlreadyExists = File.Exists(this.cacheFilePath);
+            this.CacheFilePath = GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
+            this.UsingCache = File.Exists(this.CacheFilePath);
         }
 
         private static string GetCachedFilePath(string cacheDirectory, string cachePrefix, int partitionNumber, int totalPartitions, int subPartitionNumber)
@@ -49,16 +49,16 @@ namespace AzureUtils
             byte[] bytes = new byte[objectSize];
 
             FileStream cacheWriteStream = null;
-            if (!cacheAlreadyExists)
+            if (!UsingCache)
             {
-                cacheWriteStream = File.OpenWrite(cacheFilePath);
+                cacheWriteStream = File.OpenWrite(CacheFilePath);
             }
 
             while (stream.Position + objectSize <= readEnd)
             {
                 stream.Read(bytes, 0, bytes.Length);
 
-                if (!cacheAlreadyExists)
+                if (!UsingCache)
                 {
                     cacheWriteStream.Write(bytes, 0, bytes.Length);
                 }
@@ -66,7 +66,7 @@ namespace AzureUtils
                 yield return objectDeserializer.Invoke(bytes);
             }
 
-            if (!cacheAlreadyExists)
+            if (!UsingCache)
             {
                 cacheWriteStream.Dispose();
             }
