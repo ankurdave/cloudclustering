@@ -92,7 +92,10 @@ namespace AzureUtils
             {
                 int workerNumber = 0;
 
-                foreach (Worker worker in workers.Select(pair => pair.Value))
+                // Loop through the known workers and give them each a chunk of the points.
+                // Note: This loop must execute in the same order every time, otherwise caching will not work -- the workers will get a different workerNumber each time and therefore a different chunk of the points.
+                // But Dictionary does not guarantee fixed ordering. Therefore we have to use OrderBy.
+                foreach (Worker worker in workers.Select(pair => pair.Value).OrderBy(worker => worker.PartitionKey))
                 {
                     KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), workerNumber++, workers.Count, Centroids.Uri, DateTime.UtcNow, IterationCount);
                     taskData.Points = Points.Uri;
