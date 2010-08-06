@@ -24,6 +24,13 @@ namespace AzureUtils
         {
             this.CacheFilePath = GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
             this.UsingCache = File.Exists(this.CacheFilePath);
+
+            // If we're using the cache, we should read the entire cached file, because that is the entirety of the desired partition
+            if (UsingCache)
+            {
+                readStart = 0;
+                readEnd = new FileInfo(CacheFilePath).Length;
+            }
         }
 
         private static string GetCachedFilePath(string cacheDirectory, string cachePrefix, int partitionNumber, int totalPartitions, int subPartitionNumber)
@@ -70,6 +77,11 @@ namespace AzureUtils
             {
                 cacheWriteStream.Dispose();
             }
+
+            long cacheFileLength = new FileInfo(CacheFilePath).Length;
+            if (cacheFileLength != readEnd - readStart)
+                throw new Exception();
+            System.Diagnostics.Trace.TraceInformation("-------------------- start {0} end {1} read length {2} cache file length {3}", readStart, readEnd, readEnd - readStart, cacheFileLength);
         }
     }
 }

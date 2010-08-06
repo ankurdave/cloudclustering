@@ -28,7 +28,9 @@ namespace AzureUtils
             this.objectDeserializer = objectDeserializer;
             this.objectSize = objectSize;
 
-            CalculateReadBoundaries(objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions);
+            Range<long> readRange = CalculateReadBoundaries(stream.Length, objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions);
+            this.readStart = readRange.Start;
+            this.readEnd = readRange.End;
         }
 
         public long Length
@@ -39,11 +41,11 @@ namespace AzureUtils
             }
         }
 
-        private void CalculateReadBoundaries(int objectSize, int partitionNumber, int totalPartitions, int subPartitionNumber, int subTotalPartitions)
+        private static Range<long> CalculateReadBoundaries(long streamLength, int objectSize, int partitionNumber, int totalPartitions, int subPartitionNumber, int subTotalPartitions)
         {
-            long streamObjectLength = Length;
+            long streamObjectLength = streamLength / objectSize;
             long streamObjectReadStart = 0;
-            long streamObjectReadEnd = Length;
+            long streamObjectReadEnd = streamLength / objectSize;
 
             long partitionObjectLength = AzureHelper.PartitionLength(streamObjectLength, totalPartitions);
             long partitionObjectReadStart = Math.Min(
@@ -61,12 +63,15 @@ namespace AzureUtils
                 subPartitionObjectReadStart + subPartitionObjectLength,
                 partitionObjectReadEnd);
 
-            this.readStart = Math.Min(
+            long start = Math.Min(
                 subPartitionObjectReadStart * objectSize,
-                stream.Length);
-            this.readEnd = Math.Min(
+                streamLength);
+            long end = Math.Min(
                 subPartitionObjectReadEnd * objectSize,
-                stream.Length);
+                streamLength);
+            
+            var range = new Range<long>(start, end);
+            return range;
         }
 
         #region IEnumerable code

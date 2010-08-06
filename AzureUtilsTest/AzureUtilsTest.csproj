@@ -77,6 +77,7 @@
     <Compile Include="KMeansJobTest.cs" />
     <Compile Include="KMeansTaskProcessorTest.cs" />
     <Compile Include="KMeansTaskResultTest.cs" />
+    <Compile Include="ObjectStreamReaderTest.cs" />
     <Compile Include="PerformanceLogDataSourceTest.cs" />
     <Compile Include="PointsProcessedDataTest.cs" />
     <Compile Include="PointStreamTest.cs" />

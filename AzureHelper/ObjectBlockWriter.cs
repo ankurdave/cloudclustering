@@ -35,6 +35,9 @@ namespace AzureUtils
         /// </summary>
         public void FlushBlock()
         {
+            if (blockStream.Length == 0)
+                return;
+
             string blockID = AzureHelper.GenerateRandomBlockID();
 
             blockStream.Position = 0;
