@@ -18,6 +18,8 @@ namespace AKMWorkerRole
 
         public override void Run()
         {
+            InitializeToServer();
+
             while (true)
             {
                 System.Diagnostics.Trace.TraceInformation("[WorkerRole] Waiting for messages...");
@@ -55,8 +57,6 @@ namespace AKMWorkerRole
             // see the MSDN topic at http://go.microsoft.com/fwlink/?LinkId=166357.
             RoleEnvironment.Changing += RoleEnvironmentChanging;
 
-            InitializeToServer();
-
             return base.OnStart();
         }
 
@@ -64,6 +64,8 @@ namespace AKMWorkerRole
         {
             // Give ourselves a machine ID
             this.machineID = Guid.NewGuid().ToString();
+
+            Trace.TraceInformation("[WorkerRole] Machine ID: {0}", machineID);
 
             // Announce ourselves to the server
             AzureHelper.EnqueueMessage(AzureHelper.ServerControlQueue, new ServerControlMessage(machineID));

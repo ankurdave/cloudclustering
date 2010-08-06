@@ -17,9 +17,6 @@ namespace AKMServerRole
 
         public override void Run()
         {
-            AzureHelper.ClearQueues();
-            AzureHelper.WorkerStatsReporter.Clear();
-
             while (true)
             {
                 System.Diagnostics.Trace.TraceInformation("[ServerRole] Waiting for messages...");
@@ -101,6 +98,14 @@ namespace AKMServerRole
                 // Set e.Cancel to true to restart this role instance
                 e.Cancel = true;
             }
+        }
+
+        public override void OnStop()
+        {
+            AzureHelper.ClearQueues();
+            AzureHelper.WorkerStatsReporter.Clear();
+
+            base.OnStop();
         }
     }
 }

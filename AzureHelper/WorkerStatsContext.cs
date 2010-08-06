@@ -56,10 +56,17 @@ namespace AzureUtils
 
         private void DeleteAllRows()
         {
-            IEnumerable<Worker> rows = WorkerStats.Execute();
+            IEnumerable<Worker> rows = WorkerStats.Execute().ToList();
             foreach (Worker worker in rows)
             {
-                AttachTo(WorkerStatsTableName, worker);
+                try
+                {
+                    AttachTo(WorkerStatsTableName, worker);
+                }
+                catch (InvalidOperationException e)
+                {
+                    System.Diagnostics.Trace.WriteLine("Can't attach to entity: " + e.ToString());
+                }
                 DeleteObject(worker);
             }
             SaveChanges();
