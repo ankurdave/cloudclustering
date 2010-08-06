@@ -320,3 +320,8 @@ div.accountInfo
     height: 8px;
     width: 8px;
 }
+
+td.continuation
+{
+    padding-left: 0.5em;
+}
