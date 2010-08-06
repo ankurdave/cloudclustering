@@ -13,6 +13,15 @@ namespace AKMWebRole {
     public partial class _Default {
         
         /// <summary>
+        /// UpdateTimer control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.Timer UpdateTimer;
+        
+        /// <summary>
         /// ScriptManager1 control.
         /// </summary>
         /// <remarks>
@@ -22,13 +31,13 @@ namespace AKMWebRole {
         protected global::System.Web.UI.ScriptManager ScriptManager1;
         
         /// <summary>
-        /// UpdatePanel1 control.
+        /// InputFields control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.UpdatePanel UpdatePanel1;
+        protected global::System.Web.UI.UpdatePanel InputFields;
         
         /// <summary>
         /// N control.
@@ -139,6 +148,33 @@ namespace AKMWebRole {
         protected global::System.Web.UI.WebControls.HyperLink DownloadLog;
         
         /// <summary>
+        /// PointsURI control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label PointsURI;
+        
+        /// <summary>
+        /// CentroidsURI control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label CentroidsURI;
+        
+        /// <summary>
+        /// Performance control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.UpdatePanel Performance;
+        
+        /// <summary>
         /// StatsSummary control.
         /// </summary>
         /// <remarks>
@@ -166,22 +202,13 @@ namespace AKMWebRole {
         protected global::System.Web.UI.WebControls.Literal Visualization;
         
         /// <summary>
-        /// PointsURI control.
+        /// WorkerList control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label PointsURI;
-        
-        /// <summary>
-        /// CentroidsURI control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label CentroidsURI;
+        protected global::System.Web.UI.UpdatePanel WorkerList;
         
         /// <summary>
         /// Workers control.
@@ -191,14 +218,5 @@ namespace AKMWebRole {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Literal Workers;
-        
-        /// <summary>
-        /// UpdateTimer control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.Timer UpdateTimer;
     }
 }

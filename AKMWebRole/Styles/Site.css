@@ -325,3 +325,24 @@ td.continuation
 {
     padding-left: 0.5em;
 }
+
+.visualblock
+{
+    border: 1px solid gray;
+    margin: 1em;
+    padding: 0.5em;
+    float: left;
+    width: 500px;
+}
+
+.visualblock h2 
+{
+    margin-top: 0;
+}
+
+.long
+{
+    max-height: 600px;
+    overflow: scroll;
+    overflow-x: hidden;
+}

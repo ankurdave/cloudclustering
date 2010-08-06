@@ -41,7 +41,6 @@ namespace AKMWebRole
             Status.Text = string.Format("Running job {0}.", jobID);
             DownloadLog.NavigateUrl = string.Format("Log.aspx?JobID={0}", jobID);
             DownloadLog.Enabled = true;
-            UpdatePanel1.Update();
 
             Session["jobID"] = jobID;
             Session["lastLogRefreshTime"] = DateTime.MinValue;
@@ -133,8 +132,6 @@ namespace AKMWebRole
             }
 
             UpdateWorkers();
-
-            UpdatePanel1.Update();
 
             if (Session["jobID"] != null)
             {
@@ -257,7 +254,6 @@ namespace AKMWebRole
             UpdateStatus(jobResult.JobID, true);
 
             UnfreezeUI();
-            UpdatePanel1.Update();
 
             return true;
         }
