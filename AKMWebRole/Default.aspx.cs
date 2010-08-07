@@ -273,7 +273,7 @@ namespace AKMWebRole
                         GuidToColor(p.CentroidID));
 
                     pointIndex++;
-                    if (pointIndex > (final ? 10000 : 100))
+                    if (pointIndex > (final ? 1000 : 100))
                         break;
                 }
             }

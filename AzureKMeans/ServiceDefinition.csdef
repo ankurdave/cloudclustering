@@ -9,13 +9,13 @@
       <Setting name="DataConnectionString" />
     </ConfigurationSettings>
   </WebRole>
-  <WorkerRole name="AKMWorkerRole" vmsize="Large">
+  <WorkerRole name="AKMWorkerRole" vmsize="Small">
     <ConfigurationSettings>
       <Setting name="DiagnosticsConnectionString" />
       <Setting name="DataConnectionString" />
     </ConfigurationSettings>
     <LocalResources>
-      <LocalStorage name="cache" sizeInMB="250000" />
+      <LocalStorage name="cache" sizeInMB="25000" />
     </LocalResources>
   </WorkerRole>
   <WorkerRole name="AKMServerRole">
