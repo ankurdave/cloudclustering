@@ -21,10 +21,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureUtilsTest", "AzureUtilsTest\AzureUtilsTest.csproj", "{405FD438-D8D1-47AC-B0CA-20CAB77F9219}"
 EndProject
 Global
-	GlobalSection(MercurialSourceControlSolutionProperties) = preSolution
-		SolutionIsControlled = True
-		SolutionBindings = <Solution Location In Database>
-	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = AzureKMeans.vsmdi
 	EndGlobalSection
