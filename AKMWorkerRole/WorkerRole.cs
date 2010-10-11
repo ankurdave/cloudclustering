@@ -65,10 +65,13 @@ namespace AKMWorkerRole
             // Give ourselves a machine ID
             this.machineID = Guid.NewGuid().ToString();
 
-            Trace.TraceInformation("[WorkerRole] Machine ID: {0}", machineID);
+            // Find our fault domain
+            int faultDomain = RoleEnvironment.IsAvailable ? RoleEnvironment.CurrentRoleInstance.FaultDomain : 1;
+
+            Trace.TraceInformation("[WorkerRole] Machine ID: {0}, Fault Domain: {1}", machineID, faultDomain);
 
             // Announce ourselves to the server
-            AzureHelper.EnqueueMessage(AzureHelper.ServerControlQueue, new ServerControlMessage(machineID));
+            AzureHelper.EnqueueMessage(AzureHelper.ServerControlQueue, new ServerControlMessage(machineID, faultDomain));
         }
 
         private void RoleEnvironmentChanging(object sender, RoleEnvironmentChangingEventArgs e)

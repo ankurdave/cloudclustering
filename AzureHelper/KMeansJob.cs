@@ -86,7 +86,7 @@ namespace AzureUtils
         /// <summary>
         /// Enqueues M messages into a queue. Each message is an instruction to a worker to process a partition of the k-means data.
         /// </summary>
-        public void EnqueueTasks(Dictionary<string, Worker> workers)
+        public void EnqueueTasks(IEnumerable<Worker> workers)
         {
             AzureHelper.LogPerformance(() =>
             {
@@ -94,10 +94,10 @@ namespace AzureUtils
 
                 // Loop through the known workers and give them each a chunk of the points.
                 // Note: This loop must execute in the same order every time, otherwise caching will not work -- the workers will get a different workerNumber each time and therefore a different chunk of the points.
-                // But Dictionary does not guarantee fixed ordering. Therefore we have to use OrderBy.
-                foreach (Worker worker in workers.Select(pair => pair.Value).OrderBy(worker => worker.PartitionKey))
+                // We use OrderBy on the PartitionKey to guarantee stable ordering.
+                foreach (Worker worker in workers.OrderBy(worker => worker.PartitionKey))
                 {
-                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), workerNumber++, workers.Count, Centroids.Uri, DateTime.UtcNow, IterationCount);
+                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), workerNumber++, workers.Count(), Centroids.Uri, DateTime.UtcNow, IterationCount);
                     taskData.Points = Points.Uri;
 
                     tasks.Add(new KMeansTask(taskData));
@@ -112,7 +112,7 @@ namespace AzureUtils
         /// </summary>
         /// <param name="message"></param>
         /// <returns>False if the given taskData result has already been counted, true otherwise.</returns>
-        public bool ProcessWorkerResponse(KMeansTaskResult taskResult, Dictionary<string, Worker> workers)
+        public bool ProcessWorkerResponse(KMeansTaskResult taskResult, IEnumerable<Worker> workers)
         {
             // Make sure we're actually still waiting for a result for this taskData
             // If not, this might be a duplicate queue message
@@ -171,7 +171,7 @@ namespace AzureUtils
         /// <summary>
         /// Checks whether to move into the next iteration, and performs the appropriate actions to make it happen.
         /// </summary>
-        private void NextIteration(Dictionary<string, Worker> workers)
+        private void NextIteration(IEnumerable<Worker> workers)
         {
             System.Diagnostics.Trace.TraceInformation("[ServerRole] NextIteration() JobID={0}", jobData.JobID);
 

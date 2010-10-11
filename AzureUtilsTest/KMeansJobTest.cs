@@ -226,7 +226,7 @@ namespace AzureUtilsTest
                     }
                 }
             };
-            target.ProcessWorkerResponse(taskResult, new Dictionary<string, Worker>());
+            target.ProcessWorkerResponse(taskResult, new List<Worker>());
             
             // Verify that the first ClusterPoint in Points is indeed equal to arbitraryPoint
             using (ObjectStreamReader<ClusterPoint> pointsStream = new ObjectStreamReader<ClusterPoint>(target.Points, ClusterPoint.FromByteArray, ClusterPoint.Size))
@@ -286,9 +286,9 @@ namespace AzureUtilsTest
         public void MultiIterationJobTest() // TODO: make this unit test check things in more detail
         {
             KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 4, null, 2, 2, DateTime.Now);
-            Dictionary<string, Worker> workers = new Dictionary<string, Worker> {
-                { "a", new Worker("a") },
-                { "b", new Worker("b") }
+            List<Worker> workers = new List<Worker> {
+                new Worker("a", "", 1),
+                new Worker("b", "", 1)
             };
             KMeansJob_Accessor job = new KMeansJob_Accessor(jobData, "server");
             

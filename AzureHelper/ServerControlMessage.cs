@@ -9,10 +9,12 @@ namespace AzureUtils
     public class ServerControlMessage : AzureMessage
     {
         public string MachineID { get; set; }
+        public int FaultDomain { get; set; }
 
-        public ServerControlMessage(string machineID)
+        public ServerControlMessage(string machineID, int faultDomain)
         {
             this.MachineID = machineID;
+            this.FaultDomain = faultDomain;
         }
     }
 }

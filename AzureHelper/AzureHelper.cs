@@ -229,7 +229,7 @@ namespace AzureUtils
         /// Slices a sequence into a sub-sequences each containing maxItemsPerSlice, except for the last
         /// which will contain any items left over
         /// </summary>
-        public static IEnumerable<IGrouping<int, T>> Slice<T>(this IEnumerable<T> sequence, int maxItemsPerSlice)
+        public static IEnumerable<IEnumerable<T>> Slice<T>(this IEnumerable<T> sequence, int maxItemsPerSlice)
         {
             return sequence
                 .Select((element, index) => new { Index = index, Element = element })
@@ -239,11 +239,19 @@ namespace AzureUtils
         /// <summary>
         /// Slices a sequence into numSlices slices.
         /// </summary>
-        public static IEnumerable<IGrouping<int, T>> SliceInto<T>(this IEnumerable<T> sequence, int numSlices)
+        public static IEnumerable<IEnumerable<T>> SliceInto<T>(this IEnumerable<T> sequence, int numSlices)
         {
             return sequence
                 .Select((element, index) => new { Index = index, Element = element })
                 .GroupBy(indexedElement => indexedElement.Index % numSlices, indexedElement => indexedElement.Element);
+        }
+
+        /// <summary>
+        /// Flattens a sequence of sequences by one level.
+        /// </summary>
+        public static IEnumerable<T> Flatten1<T>(this IEnumerable<IEnumerable<T>> sequence)
+        {
+            return sequence.Aggregate((list1, list2) => list1.Concat(list2));
         }
         #endregion
 

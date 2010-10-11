@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<ServiceConfiguration serviceName="AzureKMeans" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceConfiguration">
+  <Role name="AKMWebRole">
+    <Instances count="1" />
+    <ConfigurationSettings>
+<!--
+      <Setting name="DiagnosticsConnectionString" value="DefaultEndpointsProtocol=https;AccountName=cloudclusteringstore;AccountKey=0r2zT52RgAvOx7lGK5vr4zKDWDbbL2Y1K8JtRvWQsn2+aJsPDSG9pVi6MmP4fon5CDhtoaXK3qkHNymiO1hz6A==" />
+      <Setting name="DataConnectionString" value="DefaultEndpointsProtocol=http;AccountName=cloudclusteringstore;AccountKey=0r2zT52RgAvOx7lGK5vr4zKDWDbbL2Y1K8JtRvWQsn2+aJsPDSG9pVi6MmP4fon5CDhtoaXK3qkHNymiO1hz6A==" />
+-->
+      <Setting name="DiagnosticsConnectionString" value="UseDevelopmentStorage=true" />
+      <Setting name="DataConnectionString" value="UseDevelopmentStorage=true" />
+
+    </ConfigurationSettings>
+  </Role>
+  <Role name="AKMWorkerRole">
+    <Instances count="4" />
+    <ConfigurationSettings>
+<!--
+      <Setting name="DiagnosticsConnectionString" value="DefaultEndpointsProtocol=https;AccountName=cloudclusteringstore;AccountKey=0r2zT52RgAvOx7lGK5vr4zKDWDbbL2Y1K8JtRvWQsn2+aJsPDSG9pVi6MmP4fon5CDhtoaXK3qkHNymiO1hz6A==" />
+      <Setting name="DataConnectionString" value="DefaultEndpointsProtocol=http;AccountName=cloudclusteringstore;AccountKey=0r2zT52RgAvOx7lGK5vr4zKDWDbbL2Y1K8JtRvWQsn2+aJsPDSG9pVi6MmP4fon5CDhtoaXK3qkHNymiO1hz6A==" />
+-->
+      <Setting name="DiagnosticsConnectionString" value="UseDevelopmentStorage=true" />
+      <Setting name="DataConnectionString" value="UseDevelopmentStorage=true" />
+
+    </ConfigurationSettings>
+  </Role>
+  <Role name="AKMServerRole">
+    <Instances count="1" />
+    <ConfigurationSettings>
+<!--
+      <Setting name="DiagnosticsConnectionString" value="DefaultEndpointsProtocol=https;AccountName=cloudclusteringstore;AccountKey=0r2zT52RgAvOx7lGK5vr4zKDWDbbL2Y1K8JtRvWQsn2+aJsPDSG9pVi6MmP4fon5CDhtoaXK3qkHNymiO1hz6A==" />
+      <Setting name="DataConnectionString" value="DefaultEndpointsProtocol=http;AccountName=cloudclusteringstore;AccountKey=0r2zT52RgAvOx7lGK5vr4zKDWDbbL2Y1K8JtRvWQsn2+aJsPDSG9pVi6MmP4fon5CDhtoaXK3qkHNymiO1hz6A==" />
+-->
+      <Setting name="DiagnosticsConnectionString" value="UseDevelopmentStorage=true" />
+      <Setting name="DataConnectionString" value="UseDevelopmentStorage=true" />
+
+      <Setting name="mailSmtpHost" value="smtp.gmail.com"/>
+      <Setting name="mailSmtpPort" value="587"/>
+      <Setting name="mailSendingAddress" value="example@gmail.com"/>
+      <Setting name="mailSendingPassword" value="password"/>
+      <Setting name="mailSmtpSsl" value="true"/>
+    </ConfigurationSettings>
+  </Role>
+</ServiceConfiguration>

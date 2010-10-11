@@ -5,6 +5,8 @@ using Microsoft.WindowsAzure.StorageClient;
 using System.Threading;
 using Microsoft.WindowsAzure;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace AzureUtilsTest
 {
@@ -165,6 +167,52 @@ namespace AzureUtilsTest
             int numElements = 5, numPartitions = 2, expectedPartitionLength = 3;
             Assert.AreEqual(expectedPartitionLength,
                 AzureHelper.PartitionLength(numElements, numPartitions));
+        }
+
+        [TestMethod()]
+        public void SliceTest()
+        {
+            List<int> sequence = new List<int> { 1, 2, 3, 4, 5 };
+            int maxItemsPerSlice = 2;
+            IEnumerable<IEnumerable<int>> expected = new List<List<int>> {
+                new List<int> { 1, 2 },
+                new List<int> { 3, 4 },
+                new List<int> { 5 }
+            };
+            var actual = sequence.Slice(maxItemsPerSlice).ToList();
+
+            Assert.AreEqual(actual[0].Count(), 2);
+            Assert.AreEqual(actual[1].Count(), 2);
+            Assert.AreEqual(actual[2].Count(), 1);
+        }
+
+        [TestMethod()]
+        public void SliceIntoTest()
+        {
+            List<int> sequence = new List<int> { 1, 2, 3, 4, 5 };
+            int numSlices = 2;
+            var expected = new List<List<int>> {
+                new List<int> { 1, 2, 3 },
+                new List<int> { 4, 5 }
+            };
+            var actual = sequence.SliceInto(numSlices).ToList();
+
+            Assert.AreEqual(actual[0].Count(), 3);
+            Assert.AreEqual(actual[1].Count(), 2);
+        }
+
+        [TestMethod()]
+        public void Flatten1Test()
+        {
+            List<List<int>> sequence = new List<List<int>> {
+                new List<int> { 1, 2, 3 },
+                new List<int> { 4, 5 }
+            };
+
+            IEnumerable<int> expected = new List<int> { 1, 2, 3, 4, 5 };
+            IEnumerable<int> actual = sequence.Flatten1();
+            
+            CollectionAssert.AreEqual(expected.ToList(), actual.ToList());
         }
     }
 }

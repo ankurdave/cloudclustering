@@ -38,7 +38,7 @@ namespace AKMServerRole
 
             jobs[jobData.JobID] = new KMeansJob(jobData, "server");
             jobs[jobData.JobID].InitializeStorage();
-            jobs[jobData.JobID].EnqueueTasks(workers);
+            jobs[jobData.JobID].EnqueueTasks(workers.Values);
             
             return true;
         }
@@ -57,7 +57,7 @@ namespace AKMServerRole
 
             System.Diagnostics.Trace.TraceInformation("[ServerRole] ProcessWorkerResponse(jobID={0}, taskID={1}, iterationCount={2})", taskResult.JobID, taskResult.TaskID, jobs[taskResult.JobID].IterationCount);
 
-            return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult, workers);
+            return jobs[taskResult.JobID].ProcessWorkerResponse(taskResult, workers.Values);
         }
 
         private bool ProcessNewWorker(ServerControlMessage controlMessage)
@@ -68,12 +68,50 @@ namespace AKMServerRole
             if (workers.ContainsKey(controlMessage.MachineID))
                 return true;
 
-            Worker worker = new Worker(controlMessage.MachineID);
+            Worker worker = new Worker(controlMessage.MachineID, Guid.Empty.ToString(), controlMessage.FaultDomain);
+            AzureHelper.WorkerStatsReporter.Insert(worker);
             
             workers[controlMessage.MachineID] = worker;
-            AzureHelper.WorkerStatsReporter.Insert(worker);
+
+            // Need to regroup the workers into new fault domains to accommodate the new worker
+            workers = RegroupWorkers(workers.Values, () => Guid.NewGuid().ToString()).ToDictionary(w => w.PartitionKey);
+            foreach (Worker w in workers.Select(pair => pair.Value))
+                AzureHelper.WorkerStatsReporter.Update(w);
 
             return true;
+        }
+
+        /// <summary>
+        /// Assigns the given workers into groups for the purposes of fault tolerance.
+        /// </summary>
+        /// <param name="buddyGroupIDGenerator">Function that is called once per buddy group and generates a unique buddy group ID on each invocation. (Making this a parameter aids in unit testing.)</param>
+        private IEnumerable<Worker> RegroupWorkers(IEnumerable<Worker> workers, Func<string> buddyGroupIDGenerator)
+        {
+            // Azure only reports two fault domains, so that's all the information we have to work with
+            var workersinFaultDomainA = workers.Where(worker => worker.FaultDomain == 1);
+            var workersinFaultDomainB = workers.Where(worker => worker.FaultDomain != 1);
+
+            int numWorkersInA = workersinFaultDomainA.Count();
+            int numWorkersInB = workersinFaultDomainB.Count();
+
+            var larger = (numWorkersInA > numWorkersInB) ? workersinFaultDomainA : workersinFaultDomainB;
+            var smaller = (numWorkersInA <= numWorkersInB) ? workersinFaultDomainA : workersinFaultDomainB;
+
+            // Leave default groupings if all workers are in one fault domain
+            if (numWorkersInA == 0 || numWorkersInB == 0)
+                return workers;
+
+            // Otherwise, group the workers into buddy groups and assign each buddy group an ID.
+            // Then return the grouped list of workers.
+            return larger.SliceInto(smaller.Count()).Zip(smaller, (workersInLarger, workerInSmaller) =>
+            {
+                string buddyGroup = buddyGroupIDGenerator.Invoke();
+                return workersInLarger.Concat(new List<Worker> { workerInSmaller }).Select(worker =>
+                {
+                    worker.RowKey = buddyGroup;
+                    return worker;
+                });
+            }).Flatten1();
         }
 
         public override bool OnStart()

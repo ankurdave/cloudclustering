@@ -79,8 +79,13 @@
     <Compile Include="PointStreamTest.cs" />
     <Compile Include="PointTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ServerRoleTest.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\AKMServerRole\AKMServerRole.csproj">
+      <Project>{5222EF91-87E1-41C6-9187-EC784D48262A}</Project>
+      <Name>AKMServerRole</Name>
+    </ProjectReference>
     <ProjectReference Include="..\AKMWebRole\AKMWebRole.csproj">
       <Project>{25F887C0-22F0-49AD-83EF-9E4D9EF2BB32}</Project>
       <Name>AKMWebRole</Name>
@@ -92,6 +97,9 @@
   </ItemGroup>
   <ItemGroup>
     <Shadow Include="Test References\AzureHelper.accessor" />
+  </ItemGroup>
+  <ItemGroup>
+    <Shadow Include="Test References\AKMServerRole.accessor" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
