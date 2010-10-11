@@ -253,6 +253,25 @@ namespace AzureUtils
         {
             return sequence.Aggregate((list1, list2) => list1.Concat(list2));
         }
+
+        /// <summary>
+        /// Merges an arbitrary number of sequences by using the specified predicate function. This is a generalized form of the standard Enumerable.Zip method, except that all the sequences have to be of the same type.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of all the input sequences.</typeparam>
+        /// <typeparam name="TResult">The type of the elements of the result sequence.</typeparam>
+        /// <param name="source">A list of sequences to merge.</param>
+        /// <param name="resultSelector">A function that specifies how to merge the elements from all the sequences.</param>
+        /// <remarks>Like Enumerable.Zip, this method merges sequences until it reaches the end of one of them.</remarks>
+        public static IEnumerable<TResult> ZipN<TSource, TResult>(this IEnumerable<IEnumerable<TSource>> source, Func<IEnumerable<TSource>, TResult> resultSelector)
+        {
+            var iterators = source.Select(list => list.GetEnumerator());
+
+            // Step through the iterators until one of them runs out, and keep calling resultSelector on the current list of values
+            while (iterators.Select(iter => iter.MoveNext()).Aggregate((a, b) => a && b))
+            {
+                yield return resultSelector.Invoke(iterators.Select(iter => iter.Current));
+            }
+        }
         #endregion
 
         public static void SendStatusEmail(string emailAddress, Guid jobID, int iteration)

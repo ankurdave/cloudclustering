@@ -83,35 +83,28 @@ namespace AKMServerRole
 
         /// <summary>
         /// Assigns the given workers into groups for the purposes of fault tolerance.
+        /// 
+        /// Currently uses a simple algorithm that assigns at least one worker from each fault domain into each group.
+        /// This results in at least as many workers per group as there are fault domains, which is suboptimal from a performance standpoint
+        /// because everyone in a group is polling everyone else, resulting in a combinatorial growth of network traffic.
+        /// 
+        /// The ideal solution would create smaller groups that have only workers from two different fault domains.
         /// </summary>
         /// <param name="buddyGroupIDGenerator">Function that is called once per buddy group and generates a unique buddy group ID on each invocation. (Making this a parameter aids in unit testing.)</param>
         private IEnumerable<Worker> RegroupWorkers(IEnumerable<Worker> workers, Func<string> buddyGroupIDGenerator)
         {
-            // Azure only reports two fault domains, so that's all the information we have to work with
-            var workersinFaultDomainA = workers.Where(worker => worker.FaultDomain == 1);
-            var workersinFaultDomainB = workers.Where(worker => worker.FaultDomain != 1);
-
-            int numWorkersInA = workersinFaultDomainA.Count();
-            int numWorkersInB = workersinFaultDomainB.Count();
-
-            var larger = (numWorkersInA > numWorkersInB) ? workersinFaultDomainA : workersinFaultDomainB;
-            var smaller = (numWorkersInA <= numWorkersInB) ? workersinFaultDomainA : workersinFaultDomainB;
-
-            // Leave default groupings if all workers are in one fault domain
-            if (numWorkersInA == 0 || numWorkersInB == 0)
-                return workers;
-
-            // Otherwise, group the workers into buddy groups and assign each buddy group an ID.
-            // Then return the grouped list of workers.
-            return larger.SliceInto(smaller.Count()).Zip(smaller, (workersInLarger, workerInSmaller) =>
-            {
-                string buddyGroup = buddyGroupIDGenerator.Invoke();
-                return workersInLarger.Concat(new List<Worker> { workerInSmaller }).Select(worker =>
-                {
-                    worker.RowKey = buddyGroup;
-                    return worker;
-                });
-            }).Flatten1();
+            var workersInFaultDomains = workers.GroupBy(worker => worker.FaultDomain);
+            int numWorkersInSmallestFaultDomain = workersInFaultDomains.Min(faultDomain => faultDomain.Count());
+            return workersInFaultDomains
+                .Select(faultDomain => faultDomain.SliceInto(numWorkersInSmallestFaultDomain))
+                .ZipN(workersInGroup => {
+                    string buddyGroupID = buddyGroupIDGenerator.Invoke();
+                    return workersInGroup.SelectMany(worker =>
+                    {
+                        worker.RowKey = buddyGroupID;
+                        return worker;
+                    });
+                }).Flatten1();
         }
 
         public override bool OnStart()
