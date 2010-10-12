@@ -74,16 +74,29 @@ namespace AzureUtilsTest
         [DeploymentItem("AKMServerRole.dll")]
         public void RegroupWorkersTest()
         {
+            RegroupWorkersTestHelper(
+                new List<int> { 1, 1, 2, 2, 2 },
+                new List<int> { 1, 2, 1, 1, 2 });
+            RegroupWorkersTestHelper(
+                new List<int> { 1, 1, 2, 2, 3, 3, 3 },
+                new List<int> { 1, 2, 1, 2, 1, 1, 2 });
+            RegroupWorkersTestHelper(
+                new List<int> { 1, 1, 1 },
+                new List<int> { 1, 1, 1 });
+        }
+
+        private static void RegroupWorkersTestHelper(List<int> faultDomains, List<int> expectedBuddyGroups)
+        {
             ServerRole_Accessor target = new ServerRole_Accessor();
-            List<int> faultDomains = new List<int> { 1, 1, 2, 2, 2 };
-            List<string> expectedBuddyGroups = new List<string> { "1", "1", "1", "2", "2" };
 
             IEnumerable<Worker> workers = faultDomains.Select(fd => new Worker(Guid.NewGuid().ToString(), null, fd));
             int currentBuddyGroup = 1;
             List<string> actualBuddyGroups = target.RegroupWorkers(workers, () => currentBuddyGroup++.ToString())
-                .Select(worker => worker.RowKey).ToList();
+                .Select(worker => worker.RowKey).OrderBy(bg => bg).ToList();
 
-            CollectionAssert.AreEqual(expectedBuddyGroups, actualBuddyGroups);
+            CollectionAssert.AreEqual(
+                expectedBuddyGroups.OrderBy(bg => bg).Select(buddyGroup => buddyGroup.ToString()).ToList(),
+                actualBuddyGroups);
         }
     }
 }

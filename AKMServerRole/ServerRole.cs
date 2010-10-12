@@ -94,16 +94,21 @@ namespace AKMServerRole
         private IEnumerable<Worker> RegroupWorkers(IEnumerable<Worker> workers, Func<string> buddyGroupIDGenerator)
         {
             var workersInFaultDomains = workers.GroupBy(worker => worker.FaultDomain);
+
+            // If there is only one fault domain, group into pairs
+            if (workersInFaultDomains.Count() <= 1) {
+                return workersInFaultDomains.Select(faultDomain => faultDomain.Slice(2)
+
             int numWorkersInSmallestFaultDomain = workersInFaultDomains.Min(faultDomain => faultDomain.Count());
             return workersInFaultDomains
                 .Select(faultDomain => faultDomain.SliceInto(numWorkersInSmallestFaultDomain))
                 .ZipN(workersInGroup => {
                     string buddyGroupID = buddyGroupIDGenerator.Invoke();
-                    return workersInGroup.SelectMany(worker =>
+                    return workersInGroup.SelectMany(ws => ws.Select(worker =>
                     {
                         worker.RowKey = buddyGroupID;
                         return worker;
-                    });
+                    }));
                 }).Flatten1();
         }
 

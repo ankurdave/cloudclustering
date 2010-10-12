@@ -214,5 +214,20 @@ namespace AzureUtilsTest
             
             CollectionAssert.AreEqual(expected.ToList(), actual.ToList());
         }
+
+        [TestMethod()]
+        public void ZipNTest()
+        {
+            List<List<int>> sequence = new List<List<int>> {
+                new List<int> { 1, 2, 3 },
+                new List<int> { 4, 5, 6 },
+                new List<int> { 7, 8, 9 }
+            };
+
+            IEnumerable<int> expected = new List<int> { 1, 4, 7, 2, 5, 8, 3, 6, 9 };
+            var actual = sequence.ZipN(sources => sources);
+
+            CollectionAssert.AreEqual(expected.ToList(), actual.Flatten1().ToList());
+        }
     }
 }

@@ -264,12 +264,14 @@ namespace AzureUtils
         /// <remarks>Like Enumerable.Zip, this method merges sequences until it reaches the end of one of them.</remarks>
         public static IEnumerable<TResult> ZipN<TSource, TResult>(this IEnumerable<IEnumerable<TSource>> source, Func<IEnumerable<TSource>, TResult> resultSelector)
         {
-            var iterators = source.Select(list => list.GetEnumerator());
+            var iterators = source.Select(list => list.GetEnumerator()).ToList();
+            // Note: ToList forces the iterators to be generated now. Lazy evaluation causes weird out-of-order behavior.
 
             // Step through the iterators until one of them runs out, and keep calling resultSelector on the current list of values
             while (iterators.Select(iter => iter.MoveNext()).Aggregate((a, b) => a && b))
             {
-                yield return resultSelector.Invoke(iterators.Select(iter => iter.Current));
+                yield return resultSelector.Invoke(iterators.Select(iter => iter.Current).ToList());
+                // Same as above -- ToList is needed because if resultSelector does not use part of its input, the iterator ordering gets messed up.
             }
         }
         #endregion
