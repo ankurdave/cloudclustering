@@ -76,7 +76,7 @@ namespace AzureUtilsTest
         {
             ClusterPoint p = new ClusterPoint(1, 2, Guid.NewGuid());
             MemoryStream stream = new MemoryStream();
-            const int NumElements = 20;
+            const int NumElements = 5;
             for (int i = 0; i < NumElements; i++)
             {
                 stream.Write(p.ToByteArray(), 0, ClusterPoint.Size);
@@ -88,7 +88,7 @@ namespace AzureUtilsTest
             DateTime serialStart = DateTime.Now;
             int[] serialOutput = pointStream.Select(point =>
             {
-                System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(200);
                 return 1;
             }).ToArray();
             DateTime serialEnd = DateTime.Now;
@@ -97,7 +97,7 @@ namespace AzureUtilsTest
             DateTime parallelStart = DateTime.Now;
             int[] parallelOutput = pointStream.AsParallel().Select(point =>
             {
-                System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(200);
                 return 1;
             }).ToArray();
             DateTime parallelEnd = DateTime.Now;
