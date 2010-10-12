@@ -189,6 +189,39 @@ namespace AzureUtilsTest
         }
 
         /// <summary>
+        /// Tests RecalculateCentroids with an empty centroid (a centroid with no assigned points).
+        /// </summary>
+        [TestMethod()]
+        public void RecalculateCentroidsTest2()
+        {
+            KMeansJobData jobData = new KMeansJobData(Guid.NewGuid(), 0, null, 1, 10, DateTime.Now);
+            KMeansJob_Accessor target = new KMeansJob_Accessor(jobData, "server");
+            target.InitializeStorage();
+
+            byte[] cBytes = new byte[Centroid.Size];
+            using (BlobStream cStream = target.Centroids.OpenRead())
+            {
+                cStream.Read(cBytes, 0, cBytes.Length);
+            }
+            Centroid cOriginal = Centroid.FromByteArray(cBytes);
+
+            target.totalPointsProcessedDataByCentroid[cOriginal.ID] = new PointsProcessedData();
+
+            target.RecalculateCentroids();
+
+            byte[] cBytesNew = new byte[Centroid.Size];
+            using (BlobStream cStreamNew = target.Centroids.OpenRead())
+            {
+                cStreamNew.Read(cBytesNew, 0, cBytesNew.Length);
+            }
+            Centroid cNew = Centroid.FromByteArray(cBytesNew);
+
+            Assert.AreEqual(cOriginal.ID, cNew.ID);
+            Assert.AreEqual(cNew.X, 0);
+            Assert.AreEqual(cNew.Y, 0);
+        }
+
+        /// <summary>
         ///A test for ProcessWorkerResponse
         ///</summary>
         [TestMethod()]

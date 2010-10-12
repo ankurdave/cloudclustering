@@ -255,7 +255,7 @@ namespace AzureUtils
                     var newCentroids = stream.Select(c =>
                         {
                             Point newCentroidPoint;
-                            if (totalPointsProcessedDataByCentroid.ContainsKey(c.ID))
+                            if (totalPointsProcessedDataByCentroid.ContainsKey(c.ID) && totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed != 0)
                             {
                                 newCentroidPoint = totalPointsProcessedDataByCentroid[c.ID].PartialPointSum
                                  / (double)totalPointsProcessedDataByCentroid[c.ID].NumPointsProcessed;
