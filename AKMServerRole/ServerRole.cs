@@ -96,9 +96,20 @@ namespace AKMServerRole
             var workersInFaultDomains = workers.GroupBy(worker => worker.FaultDomain);
 
             // If there is only one fault domain, group into pairs
-            if (workersInFaultDomains.Count() <= 1) {
-                return workersInFaultDomains.Select(faultDomain => faultDomain.Slice(2)
+            if (workersInFaultDomains.Count() <= 1)
+            {
+                return workers.SliceMin(2).SelectMany(workersInGroup =>
+                {
+                    string buddyGroupID = buddyGroupIDGenerator.Invoke();
+                    return workersInGroup.Select(worker =>
+                    {
+                        worker.RowKey = buddyGroupID;
+                        return worker;
+                    });
+                });
+            }
 
+            // Otherwise, assign at least one worker from each fault domain into each group
             int numWorkersInSmallestFaultDomain = workersInFaultDomains.Min(faultDomain => faultDomain.Count());
             return workersInFaultDomains
                 .Select(faultDomain => faultDomain.SliceInto(numWorkersInSmallestFaultDomain))

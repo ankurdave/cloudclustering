@@ -179,11 +179,23 @@ namespace AzureUtilsTest
                 new List<int> { 3, 4 },
                 new List<int> { 5 }
             };
-            var actual = sequence.Slice(maxItemsPerSlice).ToList();
+            var actual = sequence.Slice(maxItemsPerSlice);
 
-            Assert.AreEqual(actual[0].Count(), 2);
-            Assert.AreEqual(actual[1].Count(), 2);
-            Assert.AreEqual(actual[2].Count(), 1);
+            AssertEqualDepth2(expected, actual);
+        }
+
+        [TestMethod()]
+        public void SliceMinTest()
+        {
+            List<int> sequence = new List<int> { 1, 2, 3, 4, 5 };
+            int minItemsPerSlice = 2;
+            IEnumerable<IEnumerable<int>> expected = new List<List<int>> {
+                new List<int> { 1, 2 },
+                new List<int> { 3, 4, 5 },
+            };
+            var actual = sequence.SliceMin(minItemsPerSlice);
+
+            AssertEqualDepth2(expected, actual);
         }
 
         [TestMethod()]
@@ -195,10 +207,9 @@ namespace AzureUtilsTest
                 new List<int> { 1, 2, 3 },
                 new List<int> { 4, 5 }
             };
-            var actual = sequence.SliceInto(numSlices).ToList();
+            var actual = sequence.SliceInto(numSlices);
 
-            Assert.AreEqual(actual[0].Count(), 3);
-            Assert.AreEqual(actual[1].Count(), 2);
+            AssertEqualDepth2(expected, actual);
         }
 
         [TestMethod()]
@@ -228,6 +239,57 @@ namespace AzureUtilsTest
             var actual = sequence.ZipN(sources => sources);
 
             CollectionAssert.AreEqual(expected.ToList(), actual.Flatten1().ToList());
+        }
+
+        [TestMethod()]
+        public void AppendLastToSecondLastTest()
+        {
+            List<List<int>> sequence = new List<List<int>> {
+                new List<int> { 1, 2 },
+                new List<int> { 3, 4 },
+                new List<int> { 5 }
+            };
+
+            List<List<int>> expected = new List<List<int>> {
+                new List<int> { 1, 2 },
+                new List<int> { 3, 4, 5 },
+            };
+
+            var actual = sequence.AppendLastToSecondLast();
+
+            AssertEqualDepth2(expected, actual);
+        }
+
+        /// <summary>
+        /// Verifies that the given sequences of depth 2 are equal.
+        /// </summary>
+        private void AssertEqualDepth2<T>(IEnumerable<IEnumerable<T>> expected, IEnumerable<IEnumerable<T>> actual)
+        {
+            var iterA1 = expected.GetEnumerator();
+            var iterB1 = actual.GetEnumerator();
+
+            while (iterA1.MoveNext() && iterB1.MoveNext())
+            {
+                var iterA2 = iterA1.Current.GetEnumerator();
+                var iterB2 = iterB1.Current.GetEnumerator();
+
+                while (iterA2.MoveNext() && iterB2.MoveNext())
+                {
+                    Assert.AreEqual(iterA2.Current, iterB2.Current);
+                }
+
+                AssertIteratorsSpent(iterA2, iterB2);
+            }
+
+            AssertIteratorsSpent(iterA1, iterB1);
+        }
+
+        /// <summary>
+        /// Verifies that both given iterators are spent.
+        /// </summary>
+        private void AssertIteratorsSpent<T>(IEnumerator<T> iterA, IEnumerator<T> iterB)
+        {
+            Assert.IsFalse(iterA.MoveNext() || iterB.MoveNext());
         }
     }
 }

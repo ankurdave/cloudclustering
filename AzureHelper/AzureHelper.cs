@@ -226,8 +226,8 @@ namespace AzureUtils
 
         #region LINQ extension methods
         /// <summary>
-        /// Slices a sequence into a sub-sequences each containing maxItemsPerSlice, except for the last
-        /// which will contain any items left over
+        /// Slices a sequence into sub-sequences each containing maxItemsPerSlice, except for the last,
+        /// which will contain any items left over.
         /// </summary>
         public static IEnumerable<IEnumerable<T>> Slice<T>(this IEnumerable<T> sequence, int maxItemsPerSlice)
         {
@@ -237,13 +237,53 @@ namespace AzureUtils
         }
 
         /// <summary>
+        /// Slices a sequences into sub-sequences each containing minItemsPerSlice, except for the last,
+        /// which will contain minItemsPerSlice plus any items left over.
+        /// 
+        /// Note: This iterates over the sequence at least once, so it needs to be reusable.
+        /// </summary>
+        public static IEnumerable<IEnumerable<T>> SliceMin<T>(this IEnumerable<T> sequence, int minItemsPerSlice)
+        {
+            var sliced = sequence.Slice(minItemsPerSlice);
+            if (sliced.Last().Count() < minItemsPerSlice)
+            {
+                return sliced.AppendLastToSecondLast();
+            }
+            else
+            {
+                return sliced;
+            }
+        }
+
+        /// <summary>
+        /// Takes a list of lists and merges the last two elements.
+        /// 
+        /// For example, given { { 1, 2 }, { 3, 4 }, { 5 } }, returns { { 1, 2 }, { 3, 4, 5} }.
+        /// 
+        /// Note: This iterates over the sequence at least once, so it needs to be reusable.
+        /// </summary>
+        public static IEnumerable<IEnumerable<T>> AppendLastToSecondLast<T>(this IEnumerable<IEnumerable<T>> sequence)
+        {
+            int length = sequence.Count();
+
+            if (length < 2)
+            {
+                return sequence;
+            }
+
+            var butLast2 = sequence.Take(length - 2);
+            var last2 = sequence.Skip(length - 2);
+
+            return butLast2.Concat(new List<IEnumerable<T>> { last2.Flatten1() });
+        }
+
+        /// <summary>
         /// Slices a sequence into numSlices slices.
         /// </summary>
         public static IEnumerable<IEnumerable<T>> SliceInto<T>(this IEnumerable<T> sequence, int numSlices)
         {
-            return sequence
-                .Select((element, index) => new { Index = index, Element = element })
-                .GroupBy(indexedElement => indexedElement.Index % numSlices, indexedElement => indexedElement.Element);
+            int maxItemsPerSlice = (int)Math.Ceiling((double)sequence.Count() / numSlices);
+            return sequence.Slice(maxItemsPerSlice);
         }
 
         /// <summary>
