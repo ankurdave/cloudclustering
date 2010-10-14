@@ -92,7 +92,7 @@ namespace AzureUtilsTest
             IEnumerable<Worker> workers = faultDomains.Select(fd => new Worker(Guid.NewGuid().ToString(), null, fd));
             int currentBuddyGroup = 1;
             List<string> actualBuddyGroups = target.RegroupWorkers(workers, () => currentBuddyGroup++.ToString())
-                .Select(worker => worker.RowKey).OrderBy(bg => bg).ToList();
+                .Select(worker => worker.BuddyGroupID).OrderBy(bg => bg).ToList();
 
             CollectionAssert.AreEqual(
                 expectedBuddyGroups.OrderBy(bg => bg).Select(buddyGroup => buddyGroup.ToString()).ToList(),

@@ -56,7 +56,7 @@ namespace AzureUtils
 
         public IQueryable<Worker> WorkersInBuddyGroup(string buddyGroup)
         {
-            return WorkerStats.Where(worker => worker.RowKey == buddyGroup);
+            return WorkerStats.Where(worker => worker.BuddyGroupID == buddyGroup);
         }
 
         private void DeleteAllRows()

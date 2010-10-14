@@ -9,8 +9,9 @@ namespace AzureUtils
     public class Worker : TableServiceEntity
     {
         public Worker(string workerID, string buddyGroupID, int faultDomain)
-            : base(workerID, buddyGroupID)
+            : base(workerID, Guid.NewGuid().ToString())
         {
+            this.BuddyGroupID = buddyGroupID;
             this.FaultDomain = faultDomain;
         }
 
@@ -19,6 +20,7 @@ namespace AzureUtils
         {
         }
 
+        public string BuddyGroupID { get; set; }
         public int FaultDomain { get; set; }
     }
 }

@@ -103,7 +103,7 @@ namespace AKMServerRole
                     string buddyGroupID = buddyGroupIDGenerator.Invoke();
                     return workersInGroup.Select(worker =>
                     {
-                        worker.RowKey = buddyGroupID;
+                        worker.BuddyGroupID = buddyGroupID;
                         return worker;
                     });
                 });
@@ -117,7 +117,7 @@ namespace AKMServerRole
                     string buddyGroupID = buddyGroupIDGenerator.Invoke();
                     return workersInGroup.SelectMany(ws => ws.Select(worker =>
                     {
-                        worker.RowKey = buddyGroupID;
+                        worker.BuddyGroupID = buddyGroupID;
                         return worker;
                     }));
                 }).Flatten1();
