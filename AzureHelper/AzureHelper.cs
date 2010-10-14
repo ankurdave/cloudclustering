@@ -137,8 +137,14 @@ namespace AzureUtils
 
         public static bool PollForMessage<T>(string queueName, Func<T, bool> action, int visibilityTimeoutSeconds = 30, Func<T, bool> condition = null) where T : AzureMessage
         {
-            return PollForMessageRawCondition<T>(queueName, action, visibilityTimeoutSeconds,
-                rawMessage => condition.Invoke(AzureMessage.FromMessage(rawMessage) as T));
+            // Wrap condition in a wrapper function that converts the raw message into the type that condition wants
+            Func<CloudQueueMessage, bool> rawCondition = null;
+            if (condition != null)
+            {
+                rawCondition = rawMessage => condition.Invoke(AzureMessage.FromMessage(rawMessage) as T);
+            }
+
+            return PollForMessageRawCondition<T>(queueName, action, visibilityTimeoutSeconds, rawCondition);
         }
 
         public static void ClearQueues()
