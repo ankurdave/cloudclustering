@@ -237,7 +237,7 @@ namespace AzureUtilsTest
             pointPartitionWriteStream.Write(arbitraryPoint);
             pointPartitionWriteStream.FlushBlock();
 
-            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), 0, 1, target.Centroids.Uri, DateTime.Now, 0);
+            KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), 0, 1, target.Centroids.Uri, DateTime.Now, 0, null);
 
             target.tasks.Clear();
             target.tasks.Add(new KMeansTask(taskData));

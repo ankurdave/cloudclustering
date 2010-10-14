@@ -97,7 +97,7 @@ namespace AzureUtils
                 // We use OrderBy on the PartitionKey to guarantee stable ordering.
                 foreach (Worker worker in workers.OrderBy(worker => worker.PartitionKey))
                 {
-                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), workerNumber++, workers.Count(), Centroids.Uri, DateTime.UtcNow, IterationCount);
+                    KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), workerNumber++, workers.Count(), Centroids.Uri, DateTime.UtcNow, IterationCount, worker.RowKey);
                     taskData.Points = Points.Uri;
 
                     tasks.Add(new KMeansTask(taskData));

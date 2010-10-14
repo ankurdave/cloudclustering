@@ -76,7 +76,7 @@ namespace AzureUtilsTest
         [DeploymentItem("AzureHelper.dll")]
         public void AssignClusterPointToNearestCentroidTest()
         {
-            KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, null, 2, 3, 10, 0, null, DateTime.Now, DateTime.Now, 0);
+            KMeansTaskData task = new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), 1, null, 2, 3, 10, 0, null, DateTime.Now, DateTime.Now, 0, null);
             KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(task);
 
             target.centroids = new List<Centroid>();
@@ -144,7 +144,7 @@ namespace AzureUtilsTest
                 }
             }
 
-            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), NumPoints, points.Uri, NumCentroids, 1, 0, 0, centroids.Uri, DateTime.UtcNow, DateTime.UtcNow, 0));
+            KMeansTaskProcessor_Accessor target = new KMeansTaskProcessor_Accessor(new KMeansTaskData(Guid.NewGuid(), Guid.NewGuid(), NumPoints, points.Uri, NumCentroids, 1, 0, 0, centroids.Uri, DateTime.UtcNow, DateTime.UtcNow, 0, null));
 
             System.Diagnostics.Trace.WriteLine("Entering InitializeCentroids");
             target.InitializeCentroids();

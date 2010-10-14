@@ -94,7 +94,7 @@ namespace AzureUtils
             }
         }
 
-        public static bool PollForMessage<T>(string queueName, Func<T, bool> action, int visibilityTimeoutSeconds = 30, Func<T, bool> condition = null) where T : AzureMessage
+        public static bool PollForMessageRawCondition<T>(string queueName, Func<T, bool> action, int visibilityTimeoutSeconds = 30, Func<CloudQueueMessage, bool> condition = null) where T : AzureMessage
         {
             CloudQueue queue = StorageAccount.CreateCloudQueueClient().GetQueueReference(queueName);
 
@@ -107,7 +107,7 @@ namespace AzureUtils
 
             T message = AzureMessage.FromMessage(queueMessage) as T;
 
-            if (condition != null && !condition.Invoke(message))
+            if (condition != null && !condition.Invoke(queueMessage))
                 return false;
 
             if (!action.Invoke(message))
@@ -133,6 +133,12 @@ namespace AzureUtils
             }
 
             return true;
+        }
+
+        public static bool PollForMessage<T>(string queueName, Func<T, bool> action, int visibilityTimeoutSeconds = 30, Func<T, bool> condition = null) where T : AzureMessage
+        {
+            return PollForMessageRawCondition<T>(queueName, action, visibilityTimeoutSeconds,
+                rawMessage => condition.Invoke(AzureMessage.FromMessage(rawMessage) as T));
         }
 
         public static void ClearQueues()

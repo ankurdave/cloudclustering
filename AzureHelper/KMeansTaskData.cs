@@ -15,8 +15,9 @@ namespace AzureUtils
         public Uri Centroids { get; set; }
         public DateTime TaskStartTime { get; set; }
         public int Iteration { get; set; }
+        public string BuddyGroup { get; set; }
 
-        public KMeansTaskData(Guid jobID, Guid taskID, int n, Uri points, int k, int m, int maxIterationCount, int partitionNumber, Uri centroids, DateTime jobStartTime, DateTime taskStartTime, int iteration)
+        public KMeansTaskData(Guid jobID, Guid taskID, int n, Uri points, int k, int m, int maxIterationCount, int partitionNumber, Uri centroids, DateTime jobStartTime, DateTime taskStartTime, int iteration, string buddyGroup)
             : base(jobID, n, points, k, maxIterationCount, jobStartTime)
         {
             this.TaskID = taskID;
@@ -25,9 +26,10 @@ namespace AzureUtils
             this.Centroids = centroids;
             this.TaskStartTime = TaskStartTime;
             this.Iteration = iteration;
+            this.BuddyGroup = buddyGroup;
         }
 
-        public KMeansTaskData(KMeansJobData job, Guid taskID, int partitionNumber, int m, Uri centroids, DateTime taskStartTime, int iteration)
+        public KMeansTaskData(KMeansJobData job, Guid taskID, int partitionNumber, int m, Uri centroids, DateTime taskStartTime, int iteration, string buddyGroup)
             : base(job)
         {
             this.TaskID = taskID;
@@ -36,6 +38,7 @@ namespace AzureUtils
             this.Centroids = centroids;
             this.TaskStartTime = TaskStartTime;
             this.Iteration = iteration;
+            this.BuddyGroup = buddyGroup;
         }
 
         public KMeansTaskData(KMeansTaskData task)
@@ -47,6 +50,7 @@ namespace AzureUtils
             this.Centroids = task.Centroids;
             this.TaskStartTime = task.TaskStartTime;
             this.Iteration = task.Iteration;
+            this.BuddyGroup = task.BuddyGroup;
         }
     }
 }

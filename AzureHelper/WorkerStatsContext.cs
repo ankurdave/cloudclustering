@@ -54,6 +54,11 @@ namespace AzureUtils
             SaveChanges();
         }
 
+        public IQueryable<Worker> WorkersInBuddyGroup(string buddyGroup)
+        {
+            return WorkerStats.Where(worker => worker.RowKey == buddyGroup);
+        }
+
         private void DeleteAllRows()
         {
             IEnumerable<Worker> rows = WorkerStats.Execute().ToList();
