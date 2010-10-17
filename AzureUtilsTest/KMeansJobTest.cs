@@ -232,10 +232,15 @@ namespace AzureUtilsTest
             target.InitializeStorage();
 
             // Upload a block with an arbitrary ClusterPoint, so we can verify it gets copied
-            ObjectBlockWriter<ClusterPoint> pointPartitionWriteStream = new ObjectBlockWriter<ClusterPoint>(target.Points, point => point.ToByteArray(), ClusterPoint.Size);
-            ClusterPoint arbitraryPoint = new ClusterPoint(1, 2, Guid.NewGuid());;
-            pointPartitionWriteStream.Write(arbitraryPoint);
-            pointPartitionWriteStream.FlushBlock();
+            ClusterPoint arbitraryPoint = new ClusterPoint(1, 2, Guid.NewGuid());
+            List<string> blockList;
+            using (ObjectCachedBlockWriter<ClusterPoint> pointPartitionWriteStream = new ObjectCachedBlockWriter<ClusterPoint>(target.Points, point => point.ToByteArray(), ClusterPoint.Size,
+                Environment.GetEnvironmentVariable("TEMP"), Guid.NewGuid().ToString()))
+            {
+                pointPartitionWriteStream.Write(arbitraryPoint);
+                pointPartitionWriteStream.FlushBlock();
+                blockList = pointPartitionWriteStream.BlockList;
+            }
 
             KMeansTaskData taskData = new KMeansTaskData(jobData, Guid.NewGuid(), 0, 1, target.Centroids.Uri, DateTime.Now, 0, null);
 
@@ -247,7 +252,7 @@ namespace AzureUtilsTest
             using (Stream stream = pointsBlockListBlob.OpenWrite())
             {
                 BinaryFormatter bf = new BinaryFormatter();
-                bf.Serialize(stream, pointPartitionWriteStream.BlockList);
+                bf.Serialize(stream, blockList);
             }
             taskResult.PointsBlockListBlob = pointsBlockListBlob.Uri;
             taskResult.NumPointsChanged = 2;

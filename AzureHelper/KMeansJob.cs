@@ -283,6 +283,8 @@ namespace AzureUtils
                 // Copy the contents of the new blob back into the old blob
                 Centroids.CopyFromBlob(writeBlob);
 
+                System.Diagnostics.Trace.TraceInformation("Finished RecalculateCentroids(). Total points changed: {0}", TotalNumPointsChanged);
+
                 ResetPointChangedCounts();
 
             }, jobData.JobID.ToString(), methodName: "RecalculateCentroids", iterationCount: IterationCount, points: Points.Uri.ToString(), centroids: Centroids.Uri.ToString(), machineID: MachineID);

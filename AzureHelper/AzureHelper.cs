@@ -389,5 +389,10 @@ namespace AzureUtils
                 return Environment.GetEnvironmentVariable("TEMP");
             }
         }
+
+        public static string GetCachedFilePath(string cacheDirectory, string cachePrefix, int partitionNumber, int totalPartitions, int subPartitionNumber)
+        {
+            return string.Format(@"{4}\{0}-{1}-{2}-{3}", cachePrefix, totalPartitions, partitionNumber, subPartitionNumber, cacheDirectory);
+        }
     }
 }

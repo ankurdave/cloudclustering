@@ -20,9 +20,9 @@ namespace AzureUtils
 
         public ObjectCachedStreamReader(Stream stream, Func<byte[], T> objectDeserializer, int objectSize,
             string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
-            : base(UseStreamOrCachedFile(stream, GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber)), objectDeserializer, objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions)
+            : base(UseStreamOrCachedFile(stream, AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber)), objectDeserializer, objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions)
         {
-            this.CacheFilePath = GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
+            this.CacheFilePath = AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
             this.UsingCache = File.Exists(this.CacheFilePath);
 
             // If we're using the cache, we should read the entire cached file, because that is the entirety of the desired partition
@@ -31,11 +31,6 @@ namespace AzureUtils
                 readStart = 0;
                 readEnd = new FileInfo(CacheFilePath).Length;
             }
-        }
-
-        private static string GetCachedFilePath(string cacheDirectory, string cachePrefix, int partitionNumber, int totalPartitions, int subPartitionNumber)
-        {
-            return string.Format(@"{4}\{0}-{1}-{2}-{3}", cachePrefix, totalPartitions, partitionNumber, subPartitionNumber, cacheDirectory);
         }
 
         private static Stream UseStreamOrCachedFile(Stream stream, string path)

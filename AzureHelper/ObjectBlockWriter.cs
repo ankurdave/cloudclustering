@@ -7,16 +7,26 @@ using System.IO;
 
 namespace AzureUtils
 {
-    public class ObjectBlockWriter<T> : ObjectWriter<T>
+    public class ObjectCachedBlockWriter<T> : ObjectWriter<T>, IDisposable
     {
         private CloudBlockBlob blob;
         private List<string> _blockList = new List<string>();
         private MemoryStream blockStream = new MemoryStream();
+        
+        private string cacheFilePath;
+        private Stream cacheStream;
+        private bool usingCache;
 
-        public ObjectBlockWriter(CloudBlockBlob blob, Func<T, byte[]> objectSerializer, int objectSize)
+        public ObjectCachedBlockWriter(CloudBlockBlob blob, Func<T, byte[]> objectSerializer, int objectSize,
+            string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
             : base(objectSerializer, objectSize)
         {
             this.blob = blob;
+            
+            this.cacheFilePath = AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
+            this.usingCache = File.Exists(cacheFilePath);
+            if (usingCache)
+                this.cacheStream = File.OpenWrite(cacheFilePath);
         }
 
         public override void Write(T obj)
@@ -28,6 +38,8 @@ namespace AzureUtils
 
             byte[] bytes = objectSerializer.Invoke(obj);
             blockStream.Write(bytes, 0, bytes.Length);
+            if (usingCache)
+                cacheStream.Write(bytes, 0, bytes.Length);
         }
 
         /// <summary>
@@ -55,5 +67,13 @@ namespace AzureUtils
                 return _blockList;
             }
         }
+
+        #region IDisposable code
+        public void Dispose()
+        {
+            if (usingCache)
+                cacheStream.Dispose();
+        }
+        #endregion
     }
 }
