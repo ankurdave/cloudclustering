@@ -108,7 +108,13 @@ namespace AzureUtils
             T message = AzureMessage.FromMessage(queueMessage) as T;
 
             if (condition != null && !condition.Invoke(queueMessage))
+            {
+                // Force the message to become visible on the queue, because we don't want to process it. See AzureHelperTest.AddThenDeleteMessageTest for a demonstration that this works.
+                queue.AddMessage(queueMessage);
+                queue.DeleteMessage(queueMessage);
+
                 return false;
+            }
 
             if (!action.Invoke(message))
                 return false;
@@ -128,7 +134,7 @@ namespace AzureUtils
                 }
                 else
                 {
-                    throw;
+                    throw e;
                 }
             }
 

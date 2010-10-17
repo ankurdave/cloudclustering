@@ -291,5 +291,38 @@ namespace AzureUtilsTest
         {
             Assert.IsFalse(iterA.MoveNext() || iterB.MoveNext());
         }
+
+        /// <summary>
+        /// Tests whether the following works in Azure Queue Storage:
+        /// 1. Get a message from the queue. The message is now hidden on the queue, but let's say you want to make it reappear immediately -- say because you want someone else to process it.
+        /// 2. Add that message to the queue. Now there should be two copies of the message, one visible and one hidden.
+        /// 3. Delete the message from the queue. There should now be one visible copy on the queue. (This is what we are testing.)
+        /// </summary>
+        [TestMethod()]
+        public void AddThenDeleteMessageTest()
+        {
+            CloudQueue queue = AzureHelper.StorageAccount.CreateCloudQueueClient().GetQueueReference(Guid.NewGuid().ToString());
+            queue.Create();
+
+            CloudQueueMessage message = new CloudQueueMessage("hello");
+            queue.AddMessage(message);
+
+            CloudQueueMessage messageReceived = queue.GetMessage();
+            Assert.AreEqual(message.AsString, messageReceived.AsString);
+
+            queue.AddMessage(messageReceived);
+            Assert.IsNotNull(queue.PeekMessage());
+
+            queue.DeleteMessage(messageReceived);
+            Assert.IsNotNull(queue.PeekMessage());
+
+            CloudQueueMessage messageReceived2 = queue.GetMessage();
+            Assert.IsNotNull(messageReceived2);
+            queue.DeleteMessage(messageReceived2);
+
+            Assert.IsNull(queue.GetMessage());
+
+            queue.Delete();
+        }
     }
 }
