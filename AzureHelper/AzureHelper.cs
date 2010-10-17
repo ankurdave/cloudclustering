@@ -390,9 +390,9 @@ namespace AzureUtils
             }
         }
 
-        public static string GetCachedFilePath(string cacheDirectory, string cachePrefix, int partitionNumber, int totalPartitions, int subPartitionNumber)
+        public static string GetCachedFilePath(string cacheDirectory, string cachePrefix, int partitionNumber, int totalPartitions, int subPartitionNumber, int iterationNumber)
         {
-            return string.Format(@"{4}\{0}-{1}-{2}-{3}", cachePrefix, totalPartitions, partitionNumber, subPartitionNumber, cacheDirectory);
+            return string.Format(@"{4}\{0}-{1}-{2}-{3}-{5}", cachePrefix, totalPartitions, partitionNumber, subPartitionNumber, cacheDirectory, iterationNumber);
         }
     }
 }

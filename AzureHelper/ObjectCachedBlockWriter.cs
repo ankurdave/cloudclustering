@@ -7,28 +7,27 @@ using System.IO;
 
 namespace AzureUtils
 {
+    /// <summary>
+    /// Serializes objects and writes them to two sources: an Azure block blob, and a cache file on disk.
+    /// </summary>
     public class ObjectCachedBlockWriter<T> : ObjectWriter<T>, IDisposable
     {
         private CloudBlockBlob blob;
         private List<string> _blockList = new List<string>();
         private MemoryStream blockStream = new MemoryStream();
-        
-        private string cacheFilePath;
         private Stream cacheStream;
-        private bool usingCache;
 
-        public ObjectCachedBlockWriter(CloudBlockBlob blob, Func<T, byte[]> objectSerializer, int objectSize,
-            string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
+        public ObjectCachedBlockWriter(CloudBlockBlob blob, Func<T, byte[]> objectSerializer, int objectSize, string cacheFilePath)
             : base(objectSerializer, objectSize)
         {
             this.blob = blob;
-            
-            this.cacheFilePath = AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
-            this.usingCache = File.Exists(cacheFilePath);
-            if (usingCache)
-                this.cacheStream = File.OpenWrite(cacheFilePath);
+            this.cacheStream = File.OpenWrite(cacheFilePath);
         }
 
+        /// <summary>
+        /// Serializes the given object and writes it to the block blob and the cache file.
+        /// </summary>
+        /// <param name="obj"></param>
         public override void Write(T obj)
         {
             if (blockStream.Length + objectSize >= AzureHelper.MaxBlockSize)
@@ -38,8 +37,7 @@ namespace AzureUtils
 
             byte[] bytes = objectSerializer.Invoke(obj);
             blockStream.Write(bytes, 0, bytes.Length);
-            if (usingCache)
-                cacheStream.Write(bytes, 0, bytes.Length);
+            cacheStream.Write(bytes, 0, bytes.Length);
         }
 
         /// <summary>
@@ -60,6 +58,9 @@ namespace AzureUtils
             blockStream = new MemoryStream();
         }
 
+        /// <summary>
+        /// The list of blocks that have been written to Azure storage.
+        /// </summary>
         public List<string> BlockList
         {
             get
@@ -71,8 +72,7 @@ namespace AzureUtils
         #region IDisposable code
         public void Dispose()
         {
-            if (usingCache)
-                cacheStream.Dispose();
+            cacheStream.Dispose();
         }
         #endregion
     }

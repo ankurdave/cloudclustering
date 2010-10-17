@@ -7,22 +7,25 @@ using System.IO;
 
 namespace AzureUtils
 {
+    /// <summary>
+    /// Wraps around a stream and optionally a cache file, making it possible to read deserialized objects from it using the IEnumerable interface.
+    /// </summary>
     public class ObjectCachedStreamReader<T> : ObjectStreamReader<T>
     {
         public string CacheFilePath { get; private set; }
         public bool UsingCache { get; private set; }
 
         public ObjectCachedStreamReader(CloudBlob blob, Func<byte[], T> objectDeserializer, int objectSize,
-            string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
-            : this(blob.OpenRead(), objectDeserializer, objectSize, cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions)
+            string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1, int iterationNumber = 0)
+            : this(blob.OpenRead(), objectDeserializer, objectSize, cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions, iterationNumber)
         {
         }
 
         public ObjectCachedStreamReader(Stream stream, Func<byte[], T> objectDeserializer, int objectSize,
-            string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1)
-            : base(UseStreamOrCachedFile(stream, AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber)), objectDeserializer, objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions)
+            string cacheDirectory, string cachePrefix, int partitionNumber = 0, int totalPartitions = 1, int subPartitionNumber = 0, int subTotalPartitions = 1, int iterationNumber = 0)
+            : base(UseStreamOrCachedFile(stream, AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber, iterationNumber)), objectDeserializer, objectSize, partitionNumber, totalPartitions, subPartitionNumber, subTotalPartitions)
         {
-            this.CacheFilePath = AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber);
+            this.CacheFilePath = AzureHelper.GetCachedFilePath(cacheDirectory, cachePrefix, partitionNumber, totalPartitions, subPartitionNumber, iterationNumber);
             this.UsingCache = File.Exists(this.CacheFilePath);
 
             // If we're using the cache, we should read the entire cached file, because that is the entirety of the desired partition
@@ -76,7 +79,6 @@ namespace AzureUtils
             long cacheFileLength = new FileInfo(CacheFilePath).Length;
             if (cacheFileLength != readEnd - readStart)
                 throw new Exception();
-            System.Diagnostics.Trace.TraceInformation("-------------------- start {0} end {1} read length {2} cache file length {3}", readStart, readEnd, readEnd - readStart, cacheFileLength);
         }
     }
 }

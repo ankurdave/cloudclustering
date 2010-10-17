@@ -55,7 +55,7 @@
     <Compile Include="KMeansTaskData.cs" />
     <Compile Include="KMeansTaskProcessor.cs" />
     <Compile Include="Lazy.cs" />
-    <Compile Include="ObjectBlockWriter.cs" />
+    <Compile Include="ObjectCachedBlockWriter.cs" />
     <Compile Include="ObjectCachedStreamReader.cs" />
     <Compile Include="ObjectStreamReader.cs" />
     <Compile Include="ObjectStreamWriter.cs" />

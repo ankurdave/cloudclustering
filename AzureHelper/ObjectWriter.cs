@@ -6,6 +6,10 @@ using System.IO;
 
 namespace AzureUtils
 {
+    /// <summary>
+    /// Represents a writable stream that writes serializable objects.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public abstract class ObjectWriter<T>
     {
         protected Func<T, byte[]> objectSerializer;

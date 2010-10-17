@@ -7,6 +7,9 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace AzureUtils
 {
+    /// <summary>
+    /// Wraps around a stream, making it possible to write serializable objects to the stream. Handles disposal of the stream.
+    /// </summary>
     public class ObjectStreamWriter<T> : ObjectWriter<T>, IDisposable
     {
         private Stream stream;

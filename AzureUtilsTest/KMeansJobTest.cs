@@ -235,7 +235,7 @@ namespace AzureUtilsTest
             ClusterPoint arbitraryPoint = new ClusterPoint(1, 2, Guid.NewGuid());
             List<string> blockList;
             using (ObjectCachedBlockWriter<ClusterPoint> pointPartitionWriteStream = new ObjectCachedBlockWriter<ClusterPoint>(target.Points, point => point.ToByteArray(), ClusterPoint.Size,
-                Environment.GetEnvironmentVariable("TEMP"), Guid.NewGuid().ToString()))
+                Environment.GetEnvironmentVariable("TEMP") + @"\" + Guid.NewGuid().ToString()))
             {
                 pointPartitionWriteStream.Write(arbitraryPoint);
                 pointPartitionWriteStream.FlushBlock();

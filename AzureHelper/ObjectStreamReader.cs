@@ -7,6 +7,9 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace AzureUtils
 {
+    /// <summary>
+    /// Wraps around a stream, making it possible to read deserialized objects from it using the IEnumerable interface.
+    /// </summary>
     public class ObjectStreamReader<T> : IEnumerable<T>, IDisposable
     {
         protected Stream stream;
