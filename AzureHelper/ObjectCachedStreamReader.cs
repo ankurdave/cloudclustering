@@ -79,6 +79,8 @@ namespace AzureUtils
             long cacheFileLength = new FileInfo(CacheFilePath).Length;
             if (cacheFileLength != readEnd - readStart)
                 throw new Exception();
+
+            System.Diagnostics.Trace.TraceInformation("-------------------- start {0} end {1} read length {2} cache file length {3}", readStart, readEnd, readEnd - readStart, cacheFileLength);
         }
     }
 }
