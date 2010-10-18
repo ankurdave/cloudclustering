@@ -19,7 +19,7 @@ namespace AKMServerRole
         {
             while (true)
             {
-                System.Diagnostics.Trace.TraceInformation("[ServerRole] Waiting for messages...");
+                System.Diagnostics.Trace.TraceInformation("...");
                 AzureHelper.PollForMessage<ServerControlMessage>(AzureHelper.ServerControlQueue, ProcessNewWorker);
                 AzureHelper.PollForMessage<KMeansJobData>(AzureHelper.ServerRequestQueue, ProcessNewJob);
                 AzureHelper.PollForMessage<KMeansTaskResult>(AzureHelper.WorkerResponseQueue, ProcessWorkerResponse);

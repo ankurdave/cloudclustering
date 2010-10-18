@@ -183,18 +183,14 @@ namespace AzureUtils
                 AzureHelper.SendStatusEmail(jobData.ProgressEmail, jobData.JobID, IterationCount);
             }
 
-            if (NumPointsChangedAboveThreshold())
+            if (NumPointsChangedAboveThreshold() && !MaxIterationCountExceeded())
             {
                 RecalculateCentroids();
-
-                if (!MaxIterationCountExceeded())
-                {
-                    EnqueueTasks(workers);
-                }
-                else
-                {
-                    ReturnResults();
-                }
+                EnqueueTasks(workers);
+            }
+            else
+            {
+                ReturnResults();
             }
         }
 
@@ -283,7 +279,7 @@ namespace AzureUtils
                 // Copy the contents of the new blob back into the old blob
                 Centroids.CopyFromBlob(writeBlob);
 
-                System.Diagnostics.Trace.TraceInformation("Finished RecalculateCentroids(). Total points changed: {0}", TotalNumPointsChanged);
+                System.Diagnostics.Trace.TraceInformation("[ServerRole] Finished RecalculateCentroids(). Total points changed: {0}", TotalNumPointsChanged);
 
                 ResetPointChangedCounts();
 
